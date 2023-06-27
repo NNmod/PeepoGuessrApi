@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using PeepoGuessrApi.Databases;
+using PeepoGuessrApi.Entities.Databases.Account;
 using PeepoGuessrApi.Services.Interfaces.Account.Db;
 
 namespace PeepoGuessrApi.Services.Implementations.Account.Db;
@@ -37,6 +38,14 @@ public class GameService : IGameService
             .Include(s => s.Summaries)
             .ThenInclude(u => u.User)
             .FirstOrDefaultAsync(g => g.Code == code);
+    }
+
+    public async Task<Entities.Databases.Account.Game?> FindByUserAndStatus(int userId, GameStatus gameStatus)
+    {
+        await using var context = await _accountDbContextFactory.CreateDbContextAsync();
+        return await context.Games
+            .Include(s => s.Summaries)
+            .FirstOrDefaultAsync(g => g.Summaries.Any(u => u.UserId == userId) && g.GameStatusId == gameStatus.Id);
     }
 
     public async Task<bool> Create(Entities.Databases.Account.Game game)

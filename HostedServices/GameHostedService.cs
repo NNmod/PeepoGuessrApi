@@ -86,21 +86,21 @@ public class GameHostedService : IHostedService, IDisposable
 
     private async Task CheckGameTypeGames(string gameTypeName)
     {
-        _logger.LogInformation("Game Hosted Service [{Time}]: Game {GameTypeName} update loop started", DateTime.UtcNow, gameTypeName);
+        _logger.LogDebug("Game Hosted Service [{Time}]: Game {GameTypeName} update loop started", DateTime.UtcNow, gameTypeName);
         var games = await _gameTypeService.FindInclude(gameTypeName);
         if (games == null)
             return;
         var dateTime = DateTime.UtcNow;
         foreach (var game in games.Games)
         {
-            _logger.LogInformation("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update", 
+            _logger.LogDebug("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update", 
                 DateTime.UtcNow, gameTypeName, game.Code);
             if (game.RoundExpire > dateTime)
                 continue;
             if (game.RoundCount == 0)
             {
                 await StartGameRound(games, game, 15);
-                _logger.LogInformation("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: new round started", 
+                _logger.LogDebug("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: new round started", 
                     DateTime.UtcNow, gameTypeName, game.Code);
                 continue;
             }
@@ -108,7 +108,7 @@ public class GameHostedService : IHostedService, IDisposable
             if (game.Users.Count == 0)
             {
                 await CancelGame(game);
-                _logger.LogInformation("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: game canceled", 
+                _logger.LogDebug("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: game canceled", 
                     DateTime.UtcNow, gameTypeName, game.Code);
                 continue;
             }
@@ -118,12 +118,12 @@ public class GameHostedService : IHostedService, IDisposable
             {
                 case "singleplayer":
                     isLastRound = await CompleteClassicGameRound(game);
-                    _logger.LogInformation("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: game round completed", 
+                    _logger.LogDebug("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: game round completed", 
                         DateTime.UtcNow, gameTypeName, game.Code);
                     break;
                 default:
                     isLastRound = await CompleteClassicGameRound(game, true);
-                    _logger.LogInformation("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: game round completed", 
+                    _logger.LogDebug("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: game round completed", 
                         DateTime.UtcNow, gameTypeName, game.Code);
                     break;
             }
@@ -132,23 +132,23 @@ public class GameHostedService : IHostedService, IDisposable
                 {
                     case "singleplayer":
                         await CompleteClassicGame(game, 15, 0.33, 5);
-                        _logger.LogInformation("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: game completed", 
+                        _logger.LogDebug("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: game completed", 
                             DateTime.UtcNow, gameTypeName, game.Code);
                         break;
                     case "multiplayer":// or "randomEvents":
                         await CompleteClassicGame(game, 15);
-                        _logger.LogInformation("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: game completed", 
+                        _logger.LogDebug("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: game completed", 
                             DateTime.UtcNow, gameTypeName, game.Code);
                         break;
                 }
             else
             {
                 await StartGameRound(games, game, 15);
-                _logger.LogInformation("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: new round started^2", 
+                _logger.LogDebug("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: new round started^2", 
                     DateTime.UtcNow, gameTypeName, game.Code);
             }
         }
-        _logger.LogInformation("Game Hosted Service [{Time}]: Game {GameTypeName} update loop finished", DateTime.UtcNow, gameTypeName);
+        _logger.LogDebug("Game Hosted Service [{Time}]: Game {GameTypeName} update loop finished", DateTime.UtcNow, gameTypeName);
     }
 
     private async Task CancelGame(Game game)

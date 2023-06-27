@@ -26,9 +26,13 @@ public class UserController : ControllerBase
     private readonly IGetUsersService _getUsersService;
     private readonly IAuthorizationService _authorizationService;
     private readonly IUserService _userService;
+    private readonly IGameService _gameService;
+    private readonly IGameStatusService _gameStatusService;
+    private readonly Services.Interfaces.Game.Db.IGameService _gameGameService;
 
     public UserController(IConfiguration configuration, IAccessService accessService, IOAuth2Service oAuth2Service,
-        IGetUsersService getUsersService, IAuthorizationService authorizationService, IUserService userService)
+        IGetUsersService getUsersService, IAuthorizationService authorizationService, IUserService userService,
+        IGameService gameService, IGameStatusService gameStatusService, Services.Interfaces.Game.Db.IGameService gameGameService)
     {
         _configuration = configuration;
         _accessService = accessService;
@@ -36,6 +40,9 @@ public class UserController : ControllerBase
         _getUsersService = getUsersService;
         _authorizationService = authorizationService;
         _userService = userService;
+        _gameService = gameService;
+        _gameStatusService = gameStatusService;
+        _gameGameService = gameGameService;
     }
 
     [HttpGet("top")]
@@ -47,7 +54,8 @@ public class UserController : ControllerBase
         return Ok(new ListDto<UserDto>
         {
             Pages = pages,
-            Items = items.Select(u => new UserDto(u.Id, u.TwitchId, u.Name, u.ImageUrl, u.DivisionId, u.Score, u.Wins))
+            Items = items.Select(u => new UserDto(u.Id, u.TwitchId, u.Name, u.ImageUrl, u.DivisionId, u.Score, u.Wins, 
+                    null, null))
                 .ToList()
         });
     }
@@ -61,6 +69,9 @@ public class UserController : ControllerBase
         var user = await _userService.Find(userId);
         if (user == null)
             return NotFound(new ErrorDto<object?>(404, nameof(GetUser), null));
+        var gameStatus = await _gameStatusService.Find("active");
+        var game = gameStatus == null ? null : await _gameService.FindByUserAndStatus(user.Id, gameStatus);
+        var gameGame = game == null ? null : await _gameGameService.Find(game.Id);
         if (DateTime.UtcNow.Subtract(user.Update).Hours > 12)
         {
             var access = await _accessService.Find();
@@ -79,7 +90,8 @@ public class UserController : ControllerBase
             }
             var userDto = await _getUsersService.GetUser(user.TwitchId, _configuration["Twitch:ClientId"]!, access.Token!);
             if (userDto == null)
-                return Ok(new UserDto(user.Id, user.TwitchId, user.Name, user.ImageUrl, user.DivisionId, user.Score, user.Wins));
+                return Ok(new UserDto(user.Id, user.TwitchId, user.Name, user.ImageUrl, user.DivisionId, user.Score, user.Wins,
+                    gameGame?.Code, gameGame?.RoundExpire));
             user.Name = userDto.Display_Name ?? user.Name;
             user.ImageUrl = userDto.Profile_Image_Url ?? user.ImageUrl;
             user.Update = DateTime.UtcNow;
@@ -88,7 +100,8 @@ public class UserController : ControllerBase
         }
         if (user == null)
             return NotFound(new ErrorDto<object?>(404, nameof(GetUser), null));
-        return Ok(new UserDto(user.Id, user.TwitchId, user.Name, user.ImageUrl, user.DivisionId, user.Score, user.Wins));
+        return Ok(new UserDto(user.Id, user.TwitchId, user.Name, user.ImageUrl, user.DivisionId, user.Score, user.Wins,
+            gameGame?.Code, gameGame?.RoundExpire));
     }
 
     [AllowAnonymous]
