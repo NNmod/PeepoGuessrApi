@@ -13,6 +13,7 @@ namespace PeepoGuessrApi.HostedServices;
 public class GameHostedService : IHostedService, IDisposable
 {
     private Timer? _timer;
+    private readonly SemaphoreSlim _semaphore;
     private readonly ILogger<GameHostedService> _logger;
     private readonly IConfiguration _configuration;
     private readonly IHubContext<GameHub> _gameHubContext;
@@ -40,6 +41,7 @@ public class GameHostedService : IHostedService, IDisposable
         Services.Interfaces.Account.Db.IGameStatusService accountGameStatusService,
         Services.Interfaces.Account.Db.ISummaryService accountSummaryService)
     {
+        _semaphore = new SemaphoreSlim(1);
         _logger = logger;
         _configuration = configuration;
         _gameHubContext = gameHubContext;
@@ -60,11 +62,23 @@ public class GameHostedService : IHostedService, IDisposable
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Game Hosted Service Startup [{Time}]", DateTime.UtcNow);
-        _timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+        _timer = new Timer(async _ =>
+        {
+            try
+            {
+                await _semaphore.WaitAsync(cancellationToken);
+                await DoWork();
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+        
         return Task.CompletedTask;
     }
 
-    private async void DoWork(object? state)
+    private async Task DoWork()
     {
         await CheckGameTypeGames("singleplayer");
         //await CheckGameTypeGames("multiplayer");
@@ -395,7 +409,7 @@ public class GameHostedService : IHostedService, IDisposable
     public Task StopAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("Game Hosted Service Shutdown [{Time}]", DateTime.UtcNow);
-        _timer?.Change(Timeout.Infinite, 0);
+        _timer?.Dispose();
         return Task.CompletedTask;
     }
 
