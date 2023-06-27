@@ -13,6 +13,7 @@ namespace PeepoGuessrApi.HostedServices;
 public class LobbyHostedService : IHostedService, IDisposable
 {
     private Timer? _timer;
+    private readonly SemaphoreSlim _semaphore;
     private readonly ILogger<LobbyHostedService> _logger;
     private readonly IHubContext<LobbyHub> _lobbyHubContext;
     private readonly ILobbyTypeService _lobbyTypeService;
@@ -31,6 +32,7 @@ public class LobbyHostedService : IHostedService, IDisposable
         IGameTypeService accountGameTypeService, Services.Interfaces.Game.Db.IGameService gameGameService,
         Services.Interfaces.Game.Db.IGameTypeService gameGameTypeService)
     {
+        _semaphore = new SemaphoreSlim(1);
         _logger = logger;
         _lobbyHubContext = lobbyHubContext;
         _accountDivisionService = accountDivisionService;
@@ -47,11 +49,23 @@ public class LobbyHostedService : IHostedService, IDisposable
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Online Hosted Service Startup [{Time}]", DateTime.UtcNow);
-        _timer = new Timer(DoWork, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
+        _timer = new Timer(async _ =>
+        {
+            try
+            {
+                await _semaphore.WaitAsync(cancellationToken);
+                await DoWork();
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
+        }, null, TimeSpan.Zero, TimeSpan.FromSeconds(3));
+
         return Task.CompletedTask;
     }
 
-    private async void DoWork(object? state)
+    private async Task DoWork()
     {
         await CheckGame("singleplayer");
         //await CheckGame("multiplayer");
@@ -230,7 +244,7 @@ public class LobbyHostedService : IHostedService, IDisposable
     public Task StopAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("Online Hosted Service Shutdown [{Time}]", DateTime.UtcNow);
-        _timer?.Change(Timeout.Infinite, 0);
+        _timer?.Dispose();
         return Task.CompletedTask;
     }
 
