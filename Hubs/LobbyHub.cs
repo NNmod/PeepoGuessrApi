@@ -51,21 +51,31 @@ public class LobbyHub : Hub
             return;
         }
 
-        var user = new User
+        var user = await _userService.Find(accountUser.Id);
+        if (user == null)
         {
-            UserId = accountUser.Id,
-            ConnectionId = Context.ConnectionId,
-            LobbyTypeId = lobbyType.Id,
-            Name = accountUser.Name,
-            ImageUrl = accountUser.ImageUrl,
-            DivisionId = accountUser.DivisionId,
-            Score = accountUser.Score
-        };
-        if (!await _userService.Create(user))
+            user = new User
+            {
+                UserId = accountUser.Id,
+                ConnectionId = Context.ConnectionId,
+                LobbyTypeId = lobbyType.Id,
+                Name = accountUser.Name,
+                ImageUrl = accountUser.ImageUrl,
+                DivisionId = accountUser.DivisionId,
+                Score = accountUser.Score
+            };
+            if (!await _userService.Create(user))
+            {
+                _logger.LogInformation("Lobby Disconnected User [{Time}]: user is null", DateTimeOffset.UtcNow);
+                Context.Abort();
+                return;
+            }
+        }
+        else
         {
-            _logger.LogInformation("Lobby Disconnected User [{Time}]: user is null", DateTimeOffset.UtcNow);
+            _logger.LogInformation("Lobby Disconnected User [{Time}]: multiple user connections", DateTimeOffset.UtcNow);
+            await Clients.Caller.SendAsync("Error");
             Context.Abort();
-            return;
         }
 
         await base.OnConnectedAsync();
@@ -86,7 +96,8 @@ public class LobbyHub : Hub
             await base.OnDisconnectedAsync(exception);
             return;
         }
-        await _userService.Remove(user.Id);
+        if (user.ConnectionId == Context.ConnectionId)
+            await _userService.Remove(user.Id);
         await base.OnDisconnectedAsync(exception);
     }
 }

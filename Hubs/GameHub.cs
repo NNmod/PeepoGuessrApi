@@ -102,8 +102,9 @@ public class GameHub : Hub
         }
         else
         {
-            user.ConnectionId = Context.ConnectionId;
-            await _userService.Update(user);
+            _logger.LogInformation("Game Disconnected User [{Time}]: multiple user connections", DateTimeOffset.UtcNow);
+            await Clients.Caller.SendAsync("Error");
+            Context.Abort();
         }
 
         user = await _userService.Find(user.UserId);
@@ -126,7 +127,7 @@ public class GameHub : Hub
                     user.Game.PosX, user.Game.PosY, game.RoundExpire, user.Game.RoundDelayExpire));
         await base.OnConnectedAsync();
     }
-
+    
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         var httpContext = Context.GetHttpContext();
@@ -144,9 +145,12 @@ public class GameHub : Hub
             return;
         }
 
-        await _userService.Remove(user.Id);
-        await Clients.Group(user.Game!.Code).SendAsync("RemoveUser", new RemoveUserDto(
-            user.ConnectionId!, user.UserId));
+        if (user.ConnectionId == Context.ConnectionId)
+        {
+            await _userService.Remove(user.Id);
+            await Clients.Group(user.Game!.Code).SendAsync("RemoveUser", new RemoveUserDto(
+                user.ConnectionId!, user.UserId));
+        }
         await base.OnDisconnectedAsync(exception);
     }
 }
