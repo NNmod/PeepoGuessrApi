@@ -147,7 +147,10 @@ public class UserController : ControllerBase
                 Update = DateTime.UtcNow
             };
             if (!await _userService.Create(user))
-                return StatusCode(500, new ErrorDto<object?>(500, nameof(SignInProcessing), new { code, error, state })); 
+                return StatusCode(500, new ErrorDto<object?>(500, nameof(SignInProcessing), new { code, error, state }));
+            user = await _userService.FindByTwitch(userDto.Id);
+            if (user == null)
+                return NotFound(new ErrorDto<object?>(404, nameof(SignInProcessing), new { code, error, state }));
         }
         else
         {

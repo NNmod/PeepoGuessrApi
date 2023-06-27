@@ -72,23 +72,30 @@ public class GameHostedService : IHostedService, IDisposable
 
     private async Task CheckGameTypeGames(string gameTypeName)
     {
+        _logger.LogInformation("Game Hosted Service [{Time}]: Game {GameTypeName} update loop started", DateTime.UtcNow, gameTypeName);
         var games = await _gameTypeService.FindInclude(gameTypeName);
         if (games == null)
             return;
         var dateTime = DateTime.UtcNow;
         foreach (var game in games.Games)
         {
+            _logger.LogInformation("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update", 
+                DateTime.UtcNow, gameTypeName, game.Code);
             if (game.RoundExpire > dateTime)
                 continue;
             if (game.RoundCount == 0)
             {
                 await StartGameRound(games, game, 15);
+                _logger.LogInformation("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: new round started", 
+                    DateTime.UtcNow, gameTypeName, game.Code);
                 continue;
             }
 
             if (game.Users.Count == 0)
             {
                 await CancelGame(game);
+                _logger.LogInformation("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: game canceled", 
+                    DateTime.UtcNow, gameTypeName, game.Code);
                 continue;
             }
 
@@ -97,24 +104,37 @@ public class GameHostedService : IHostedService, IDisposable
             {
                 case "singleplayer":
                     isLastRound = await CompleteClassicGameRound(game);
+                    _logger.LogInformation("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: game round completed", 
+                        DateTime.UtcNow, gameTypeName, game.Code);
                     break;
                 default:
                     isLastRound = await CompleteClassicGameRound(game, true);
+                    _logger.LogInformation("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: game round completed", 
+                        DateTime.UtcNow, gameTypeName, game.Code);
                     break;
             }
             if (isLastRound)
                 switch (gameTypeName)
                 {
                     case "singleplayer":
-                        await CompleteClassicGame(game, 0.33, 5);
+                        await CompleteClassicGame(game, 15, 0.33, 5);
+                        _logger.LogInformation("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: game completed", 
+                            DateTime.UtcNow, gameTypeName, game.Code);
                         break;
                     case "multiplayer":// or "randomEvents":
-                        await CompleteClassicGame(game);
+                        await CompleteClassicGame(game, 15);
+                        _logger.LogInformation("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: game completed", 
+                            DateTime.UtcNow, gameTypeName, game.Code);
                         break;
                 }
             else
+            {
                 await StartGameRound(games, game, 15);
+                _logger.LogInformation("Game Hosted Service [{Time}]: Game {GameTypeName} update loop: {GameCode} update: new round started^2", 
+                    DateTime.UtcNow, gameTypeName, game.Code);
+            }
         }
+        _logger.LogInformation("Game Hosted Service [{Time}]: Game {GameTypeName} update loop finished", DateTime.UtcNow, gameTypeName);
     }
 
     private async Task CancelGame(Game game)
@@ -134,10 +154,8 @@ public class GameHostedService : IHostedService, IDisposable
         await _gameService.Remove(game.Id);
     }
 
-    private async Task CompleteClassicGame(Game game, double ratio = 1, int roundIgnoreCount = 0)
+    private async Task CompleteClassicGame(Game game, int summaryDelay, double ratio = 1, int roundIgnoreCount = 0)
     {
-        await _gameHubContext.Clients.Group(game.Code).SendAsync("CompleteGame");
-        
         var rounds = game.RoundCount > 20 ? 20 : game.RoundCount;
         var winner = game.Users.MaxBy(u => u.Health);
         if (winner == null)
@@ -154,6 +172,8 @@ public class GameHostedService : IHostedService, IDisposable
             await _gameHubContext.Clients.Group(game.Code).SendAsync("Error");
             return;
         }
+        
+        var userSummaries = new List<GameUserSummaryDto>();
 
         foreach (var user in game.Users)
         {
@@ -196,9 +216,9 @@ public class GameHostedService : IHostedService, IDisposable
             if (!await _accountUserService.Update(accountUser) || !await _accountSummaryService.Update(accountSummary))
                 continue;
             
-            await _gameHubContext.Clients.Group(game.Code).SendAsync("UserGameSummary", new GameSummaryDto(
-                user.UserId, user.Name, user.ImageUrl, accountUser.DivisionId, accountUser.Score, oldScore, isWinner,
-                oldDivisionId < accountUser.DivisionId, oldDivisionId > accountUser.DivisionId));
+            userSummaries.Add(new GameUserSummaryDto(user.UserId, user.Name, user.ImageUrl, accountUser.DivisionId, 
+                accountUser.Score, oldScore, isWinner, oldDivisionId < accountUser.DivisionId, 
+                oldDivisionId > accountUser.DivisionId));
         }
         
         var accountGameStatus = await _accountGameStatusService.Find("completed");
@@ -208,6 +228,9 @@ public class GameHostedService : IHostedService, IDisposable
         if (!await _accountGameService.Update(accountGame))
             return;
         await _gameService.Remove(game.Id);
+
+        await _gameHubContext.Clients.Group(game.Code).SendAsync("GameSummary", new GameSummaryDto(
+            DateTime.UtcNow.AddSeconds(summaryDelay), userSummaries));
     }
 
     private async Task<bool> CompleteClassicGameRound(Game game, bool countFromNearestUser = false)
@@ -271,7 +294,7 @@ public class GameHostedService : IHostedService, IDisposable
                 userRoundSummary.PosX, userRoundSummary.PosY));
         }
         
-        await _gameHubContext.Clients.Group(game.Code).SendAsync("RoundSummary", new RoundSummaryDto(
+        await _gameHubContext.Clients.Group(game.Code).SendAsync("RoundSummary", new RoundSummaryDto(isLastRound,
             accountRound.Count, accountRound.Map!.Url, accountRound.PosX, accountRound.PosY, userSummaries));
         
         return isLastRound;
