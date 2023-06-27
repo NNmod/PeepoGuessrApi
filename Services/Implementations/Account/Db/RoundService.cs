@@ -30,6 +30,7 @@ public class RoundService : IRoundService
         return await context.Rounds
             .Include(m => m.Map)
             .Include(rs => rs.RoundSummaries)
+            .ThenInclude(u => u.User)
             .FirstOrDefaultAsync(r => r.GameId == game.Id && r.Count == count);
     }
 

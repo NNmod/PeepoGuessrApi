@@ -171,18 +171,27 @@ public class GameHostedService : IHostedService, IDisposable
     private async Task CompleteClassicGame(Game game, int summaryDelay, double ratio = 1, int roundIgnoreCount = 0)
     {
         var rounds = game.RoundCount > 20 ? 20 : game.RoundCount;
-        var winner = game.Users.MaxBy(u => u.Health);
-        if (winner == null)
-        {
-            _logger.LogInformation("Game Hosted Service [{Time}]: winner is null", DateTime.UtcNow);
-            await _gameHubContext.Clients.Group(game.Code).SendAsync("Error");
-            return;
-        }
 
         var accountGame = await _accountGameService.Find(game.GameId);
         if (accountGame == null)
         {
             _logger.LogInformation("Game Hosted Service [{Time}]: accountGame is null", DateTime.UtcNow);
+            await _gameHubContext.Clients.Group(game.Code).SendAsync("Error");
+            return;
+        }
+        
+        var accountRound = await _accountRoundService.Find(accountGame, game.RoundCount);
+        if (accountRound == null)
+        {
+            _logger.LogInformation("Game Hosted Service [{Time}]: accountRound is null", DateTime.UtcNow);
+            await _gameHubContext.Clients.Group(game.Code).SendAsync("Error");
+            return;
+        }
+        
+        var winner = accountRound.RoundSummaries.MaxBy(u => u.Health);
+        if (winner == null)
+        {
+            _logger.LogInformation("Game Hosted Service [{Time}]: winner is null", DateTime.UtcNow);
             await _gameHubContext.Clients.Group(game.Code).SendAsync("Error");
             return;
         }
@@ -250,11 +259,7 @@ public class GameHostedService : IHostedService, IDisposable
     private async Task<bool> CompleteClassicGameRound(Game game, bool countFromNearestUser = false)
     {
         await _gameHubContext.Clients.Group(game.Code).SendAsync("CompleteRound");
-        
-        var isLastRound = false;
-        var nearestUser = game.Users.MinBy(u => u.Distance);
-        var subtractor = countFromNearestUser ? nearestUser?.Distance ?? 0 : 0;
-        
+
         var accountGame = await _accountGameService.Find(game.GameId);
         if (accountGame == null)
         {
@@ -270,42 +275,32 @@ public class GameHostedService : IHostedService, IDisposable
             return false;
         }
 
+        var isLastRound = false;
+        var nearestUser = accountRound.RoundSummaries.MinBy(u => u.Distance);
+        var subtractor = countFromNearestUser ? nearestUser?.Distance ?? 0 : 0;
+        
         var userSummaries = new List<RoundUserSummaryDto>();
         
-        foreach (var user in game.Users)
+        foreach (var user in accountRound.RoundSummaries)
         {
-            var userRoundSummary = accountRound.RoundSummaries.FirstOrDefault(rs => rs.UserId == user.UserId);
-            if (userRoundSummary == null)
-            {
-                _logger.LogInformation("Game Hosted Service [{Time}]: userRoundSummary is null", DateTime.UtcNow);
-                await _gameHubContext.Clients.Group(game.Code).SendAsync("Error");
-                return false;
-            }
-
             var damage = (int)((user.Distance - subtractor) * game.Multiplier);
             user.Health -= damage;
+            user.Damage = damage;
             if (user.Health <= 0)
             {
                 user.Health = 0;
                 isLastRound = true;
             }
 
-            userRoundSummary.PosX = user.PosX;
-            userRoundSummary.PosY = user.PosY;
-            userRoundSummary.Distance = user.Distance;
-            userRoundSummary.Damage = damage;
-            userRoundSummary.Health = user.Health;
-
-            if (!await _accountRoundSummaryService.Update(userRoundSummary) || !await _userService.Update(user))
+            if (!await _accountRoundSummaryService.Update(user))
             {
                 _logger.LogInformation("Game Hosted Service [{Time}]: accountRoundSummary or user cannot be updated", DateTime.UtcNow);
                 await _gameHubContext.Clients.Group(game.Code).SendAsync("Error");
                 return false;
             }
             
-            userSummaries.Add(new RoundUserSummaryDto(user.ConnectionId, user.UserId, user.Name, user.ImageUrl, 
-                user.DivisionId, userRoundSummary.Health, userRoundSummary.Damage, userRoundSummary.Distance, 
-                userRoundSummary.PosX, userRoundSummary.PosY));
+            userSummaries.Add(new RoundUserSummaryDto(user.User!.Id, user.User.Name, user.User.ImageUrl, 
+                user.User.DivisionId, user.Health, user.Damage, user.Distance, user.PosX, user.PosY));
         }
         
         await _gameHubContext.Clients.Group(game.Code).SendAsync("RoundSummary", new RoundSummaryDto(isLastRound,
@@ -316,7 +311,6 @@ public class GameHostedService : IHostedService, IDisposable
 
     private async Task StartGameRound(GameType gameType, Game game, int roundDelay, int customRoundDuration = 0)
     {
-        game.RoundCount++;
         var maps = await _accountMapService.FindClassic();
         var rnd = new Random();
         var mapId = rnd.Next(1, maps.Count + 1);
@@ -339,7 +333,7 @@ public class GameHostedService : IHostedService, IDisposable
         {
             GameId = game.GameId,
             MapId = map.Id,
-            Count = game.RoundCount,
+            Count = game.RoundCount + 1,
             PosX = position.X,
             PosY = position.Y
         };
@@ -350,41 +344,77 @@ public class GameHostedService : IHostedService, IDisposable
             return;
         }
 
-        round = await _accountRoundService.Find(accountGame, game.RoundCount);
+        round = await _accountRoundService.Find(accountGame, game.RoundCount + 1);
         if (round == null)
         {
             _logger.LogInformation("Game Hosted Service [{Time}]: accountRound is null", DateTime.UtcNow);
             await _gameHubContext.Clients.Group(game.Code).SendAsync("Error");
             return;
-        } 
+        }
 
-        foreach (var user in game.Users)
+        if (game.RoundCount > 0)
         {
-            var roundSummary = new RoundSummary
+            var lastRound = await _accountRoundService.Find(accountGame, game.RoundCount);
+            if (lastRound == null)
             {
-                RoundId = round.Id,
-                UserId = user.UserId,
-                Health = user.Health,
-                Distance = 5000,
-                PosX = null,
-                PosY = null
-            };
-            user.PosX = null;
-            user.PosY = null;
-            user.Distance = 5000;
-            user.GuessAvailable = 1;
-            if (await _accountRoundSummaryService.Create(roundSummary) && await _userService.Update(user))
-            {
-                await _gameHubContext.Clients.Group(game.Code).SendAsync("UserGuess", new GuessDto(user.UserId, 
-                    user.GuessAvailable, user.Distance));
-                continue;
+                _logger.LogInformation("Game Hosted Service [{Time}]: lastRound is null", DateTime.UtcNow);
+                await _gameHubContext.Clients.Group(game.Code).SendAsync("Error");
+                return;
             }
-            _logger.LogInformation("Game Hosted Service [{Time}]: accountRoundSummary or user cannot be created/updated", DateTime.UtcNow);
-            await _gameHubContext.Clients.Group(game.Code).SendAsync("Error");
-            return;
+            
+            foreach (var user in lastRound.RoundSummaries)
+            {
+                var roundSummary = new RoundSummary
+                {
+                    RoundId = round.Id,
+                    UserId = user.UserId,
+                    Health = user.Health,
+                    GuessAvailable = 1,
+                    Distance = 5000,
+                    PosX = null,
+                    PosY = null
+                };
+
+                if (!await _accountRoundSummaryService.Create(roundSummary))
+                {
+                    _logger.LogInformation("Game Hosted Service [{Time}]: accountRoundSummary or user cannot be created/updated", DateTime.UtcNow);
+                    await _gameHubContext.Clients.Group(game.Code).SendAsync("Error");
+                    return;
+                }
+                
+                await _gameHubContext.Clients.Group(game.Code).SendAsync("UserGuess", 
+                    new GuessDto(roundSummary.UserId, roundSummary.GuessAvailable, roundSummary.Distance));
+            }
+        }
+        else
+        {
+            foreach (var user in accountGame.Summaries)
+            {
+                var roundSummary = new RoundSummary
+                {
+                    RoundId = round.Id,
+                    UserId = user.UserId,
+                    Health = 5000,
+                    GuessAvailable = 1,
+                    Distance = 5000,
+                    PosX = null,
+                    PosY = null
+                };
+
+                if (!await _accountRoundSummaryService.Create(roundSummary))
+                {
+                    _logger.LogInformation("Game Hosted Service [{Time}]: accountRoundSummary or user cannot be created/updated", DateTime.UtcNow);
+                    await _gameHubContext.Clients.Group(game.Code).SendAsync("Error");
+                    return;
+                }
+                
+                await _gameHubContext.Clients.Group(game.Code).SendAsync("UserGuess", new GuessDto(
+                    roundSummary.UserId, roundSummary.GuessAvailable, roundSummary.Distance));
+            }
         }
 
         var dateTime = DateTime.UtcNow;
+        game.RoundCount++;
         game.MapUrl = map.Url;
         game.Multiplier = game.RoundCount > 5 ? 2 + 0.5 * (game.RoundCount - 5) : 0.75 + 0.25 * game.RoundCount;
         game.PosX = position.X;

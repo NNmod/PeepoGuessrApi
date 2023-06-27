@@ -31,12 +31,7 @@ public class UserService : IUserService
             GameId = user.GameId,
             Name = user.Name,
             ImageUrl = user.ImageUrl,
-            DivisionId = user.DivisionId,
-            Health = user.Health,
-            GuessAvailable = user.GuessAvailable,
-            PosX = user.PosX,
-            PosY = user.PosY,
-            Distance = user.Distance
+            DivisionId = user.DivisionId
         };
         await using var context = await _gameDbContextFactory.CreateDbContextAsync();
         await context.AddAsync(addUser);
@@ -61,12 +56,7 @@ public class UserService : IUserService
             GameId = user.GameId,
             Name = user.Name,
             ImageUrl = user.ImageUrl,
-            DivisionId = user.DivisionId,
-            Health = user.Health,
-            GuessAvailable = user.GuessAvailable,
-            PosX = user.PosX,
-            PosY = user.PosY,
-            Distance = user.Distance
+            DivisionId = user.DivisionId
         };
         await using var context = await _gameDbContextFactory.CreateDbContextAsync();
         context.Update(updateUser);

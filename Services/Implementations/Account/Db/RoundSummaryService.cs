@@ -20,6 +20,7 @@ public class RoundSummaryService : IRoundSummaryService
         {
             RoundId = roundSummary.RoundId,
             UserId = roundSummary.UserId,
+            GuessAvailable = roundSummary.GuessAvailable,
             Health = roundSummary.Health,
             Damage = roundSummary.Damage,
             Distance = roundSummary.Distance,
@@ -46,6 +47,7 @@ public class RoundSummaryService : IRoundSummaryService
             Id = roundSummary.Id,
             RoundId = roundSummary.RoundId,
             UserId = roundSummary.UserId,
+            GuessAvailable = roundSummary.GuessAvailable,
             Health = roundSummary.Health,
             Damage = roundSummary.Damage,
             Distance = roundSummary.Distance,

@@ -15,9 +15,4 @@ public class User
     public required string Name { get; set; }
     public required string ImageUrl { get; set; }
     public int DivisionId { get; set; }
-    public int Health { get; set; }
-    public int GuessAvailable { get; set; }
-    public double? PosX { get; set; }
-    public double? PosY { get; set; }
-    public double Distance { get; set; }
 }
