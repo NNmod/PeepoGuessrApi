@@ -15,6 +15,7 @@ public class LobbyHostedService : IHostedService, IDisposable
     private Timer? _timer;
     private readonly SemaphoreSlim _semaphore;
     private readonly ILogger<LobbyHostedService> _logger;
+    private readonly IConfiguration _configuration;
     private readonly IHubContext<LobbyHub> _lobbyHubContext;
     private readonly ILobbyTypeService _lobbyTypeService;
     private readonly IUserService _userService;
@@ -26,7 +27,7 @@ public class LobbyHostedService : IHostedService, IDisposable
     private readonly Services.Interfaces.Game.Db.IGameService _gameGameService;
     private readonly Services.Interfaces.Game.Db.IGameTypeService _gameGameTypeService;
 
-    public LobbyHostedService(ILogger<LobbyHostedService> logger, IHubContext<LobbyHub> lobbyHubContext,
+    public LobbyHostedService(ILogger<LobbyHostedService> logger, IConfiguration configuration, IHubContext<LobbyHub> lobbyHubContext,
         IDivisionService accountDivisionService, ILobbyTypeService lobbyTypeService, IUserService userService, 
         IGameService accountGameService, IGameStatusService accountGameStatusService, ISummaryService accountSummaryService, 
         IGameTypeService accountGameTypeService, Services.Interfaces.Game.Db.IGameService gameGameService,
@@ -34,6 +35,7 @@ public class LobbyHostedService : IHostedService, IDisposable
     {
         _semaphore = new SemaphoreSlim(1);
         _logger = logger;
+        _configuration = configuration;
         _lobbyHubContext = lobbyHubContext;
         _accountDivisionService = accountDivisionService;
         _lobbyTypeService = lobbyTypeService;
@@ -67,6 +69,16 @@ public class LobbyHostedService : IHostedService, IDisposable
 
     private async Task DoWork()
     {
+        var gamesCount = await _gameGameService.Count();
+        if (int.TryParse(_configuration["Game:Limit"], out var limit) && gamesCount >= limit)
+        {
+            await _lobbyHubContext.Clients.Group("DelayHolder").SendAsync("Delayed");
+            var users = await _userService.FindList();
+            foreach (var user in users)
+                await _lobbyHubContext.Groups.RemoveFromGroupAsync(user.ConnectionId, "DelayHolder");
+            return;
+        }
+        
         await CheckGame("singleplayer");
         //await CheckGame("multiplayer");
     }

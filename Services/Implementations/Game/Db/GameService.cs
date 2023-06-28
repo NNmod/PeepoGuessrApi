@@ -13,6 +13,13 @@ public class GameService : IGameService
         _gameDbContextFactory = gameDbContextFactory;
     }
 
+    public async Task<int> Count()
+    {
+        await using var context = await _gameDbContextFactory.CreateDbContextAsync();
+        return await context.Games
+            .CountAsync();
+    }
+
     public async Task<Entities.Databases.Game.Game?> Find(int gameId)
     {
         await using var context = await _gameDbContextFactory.CreateDbContextAsync();

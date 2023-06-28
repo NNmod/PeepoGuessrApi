@@ -22,6 +22,13 @@ public class UserService : IUserService
             .FirstOrDefaultAsync(u => u.UserId == userId);
     }
 
+    public async Task<List<User>> FindList()
+    {
+        await using var context = await _lobbyDbContextFactory.CreateDbContextAsync();
+        return await context.Users
+            .ToListAsync();
+    }
+
     public async Task<bool> Create(User user)
     {
         var addUser = new User

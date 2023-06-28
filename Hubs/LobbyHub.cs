@@ -109,6 +109,7 @@ public class LobbyHub : Hub
             Context.Abort();
         }
 
+        await Groups.AddToGroupAsync(Context.ConnectionId, "DelayHolder");
         await base.OnConnectedAsync();
     }
 
