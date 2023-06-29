@@ -1,6 +1,6 @@
 using PeepoGuessrApi.Entities.Databases.Maintenance;
 
-namespace PeepoGuessrApi.Services.Interfaces.Maintenance;
+namespace PeepoGuessrApi.Services.Interfaces.Maintenance.Db;
 
 public interface IAccessService
 {

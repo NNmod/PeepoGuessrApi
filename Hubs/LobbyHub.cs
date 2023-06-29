@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using PeepoGuessrApi.Entities.Databases.Lobby;
 using PeepoGuessrApi.Entities.Response.Hubs.Lobby;
-using PeepoGuessrApi.Services.Interfaces.LobbyDb;
+using PeepoGuessrApi.Services.Interfaces.Lobby.Db;
 
 namespace PeepoGuessrApi.Hubs;
 

@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using PeepoGuessrApi.Databases;
 using PeepoGuessrApi.Entities.Databases.Lobby;
-using PeepoGuessrApi.Services.Interfaces.LobbyDb;
+using PeepoGuessrApi.Services.Interfaces.Lobby.Db;
 
-namespace PeepoGuessrApi.Services.Implementations.LobbyDb;
+namespace PeepoGuessrApi.Services.Implementations.Lobby.Db;
 
 public class UserService : IUserService
 {

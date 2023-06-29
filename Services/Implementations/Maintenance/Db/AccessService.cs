@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using PeepoGuessrApi.Databases;
 using PeepoGuessrApi.Entities.Databases.Maintenance;
-using PeepoGuessrApi.Services.Interfaces.Maintenance;
+using PeepoGuessrApi.Services.Interfaces.Maintenance.Db;
 
-namespace PeepoGuessrApi.Services.Implementations.Maintenance;
+namespace PeepoGuessrApi.Services.Implementations.Maintenance.Db;
 
 public class AccessService : IAccessService
 {

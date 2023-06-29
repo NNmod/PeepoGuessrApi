@@ -7,14 +7,20 @@ using PeepoGuessrApi.Databases;
 using PeepoGuessrApi.HostedServices;
 using PeepoGuessrApi.Hubs;
 using PeepoGuessrApi.Services.Implementations.Account.Db;
-using PeepoGuessrApi.Services.Implementations.LobbyDb;
-using PeepoGuessrApi.Services.Implementations.Maintenance;
+using PeepoGuessrApi.Services.Implementations.Game;
+using PeepoGuessrApi.Services.Implementations.Lobby;
+using PeepoGuessrApi.Services.Implementations.Lobby.Db;
+using PeepoGuessrApi.Services.Implementations.Maintenance.Db;
 using PeepoGuessrApi.Services.Implementations.Twitch;
 using PeepoGuessrApi.Services.Interfaces.Account.Db;
-using PeepoGuessrApi.Services.Interfaces.LobbyDb;
-using PeepoGuessrApi.Services.Interfaces.Maintenance;
+using PeepoGuessrApi.Services.Interfaces.Game;
+using PeepoGuessrApi.Services.Interfaces.Lobby;
+using PeepoGuessrApi.Services.Interfaces.Lobby.Db;
+using PeepoGuessrApi.Services.Interfaces.Maintenance.Db;
 using PeepoGuessrApi.Services.Interfaces.Twitch;
+using IMapService = PeepoGuessrApi.Services.Interfaces.Account.Db.IMapService;
 using IUserService = PeepoGuessrApi.Services.Interfaces.Account.Db.IUserService;
+using MapService = PeepoGuessrApi.Services.Implementations.Account.Db.MapService;
 using UserService = PeepoGuessrApi.Services.Implementations.Account.Db.UserService;
 
 
@@ -42,20 +48,29 @@ builder.Services.AddScoped<IUserService, UserService>();
 
 #region Db
 
-builder.Services.AddTransient<PeepoGuessrApi.Services.Interfaces.Game.Db.IGameService, PeepoGuessrApi.Services.Implementations.Game.Db.GameService>();
-builder.Services.AddTransient<PeepoGuessrApi.Services.Interfaces.Game.Db.IGameTypeService, PeepoGuessrApi.Services.Implementations.Game.Db.GameTypeService>();
-builder.Services.AddTransient<PeepoGuessrApi.Services.Interfaces.Game.Db.IUserService, PeepoGuessrApi.Services.Implementations.Game.Db.UserService>();
+builder.Services.AddScoped<PeepoGuessrApi.Services.Interfaces.Game.Db.IGameService, PeepoGuessrApi.Services.Implementations.Game.Db.GameService>();
+builder.Services.AddScoped<PeepoGuessrApi.Services.Interfaces.Game.Db.IGameTypeService, PeepoGuessrApi.Services.Implementations.Game.Db.GameTypeService>();
+builder.Services.AddScoped<PeepoGuessrApi.Services.Interfaces.Game.Db.IUserService, PeepoGuessrApi.Services.Implementations.Game.Db.UserService>();
 
 #endregion
 
+builder.Services.AddScoped<IFinishGameService, FinishGameService>();
+builder.Services.AddScoped<IFinishRoundService, FinishRoundService>();
 builder.Services.AddHttpClient<PeepoGuessrApi.Services.Interfaces.Game.IMapService, PeepoGuessrApi.Services.Implementations.Game.MapService>();
+builder.Services.AddScoped<IStartRoundService, StartRoundService>();
 
 #endregion
 
 #region LobbyDb
 
-builder.Services.AddTransient<ILobbyTypeService, LobbyTypeService>();
-builder.Services.AddTransient<PeepoGuessrApi.Services.Interfaces.LobbyDb.IUserService, PeepoGuessrApi.Services.Implementations.LobbyDb.UserService>();
+#region Db
+
+builder.Services.AddScoped<ILobbyTypeService, LobbyTypeService>();
+builder.Services.AddScoped<PeepoGuessrApi.Services.Interfaces.Lobby.Db.IUserService, PeepoGuessrApi.Services.Implementations.Lobby.Db.UserService>();
+
+#endregion
+
+builder.Services.AddScoped<IStartGameService, StartGameService>();
 
 #endregion
 

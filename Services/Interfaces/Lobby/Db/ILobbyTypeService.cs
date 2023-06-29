@@ -1,6 +1,6 @@
 using PeepoGuessrApi.Entities.Databases.Lobby;
 
-namespace PeepoGuessrApi.Services.Interfaces.LobbyDb;
+namespace PeepoGuessrApi.Services.Interfaces.Lobby.Db;
 
 public interface ILobbyTypeService
 {

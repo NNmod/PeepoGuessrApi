@@ -1,12 +1,10 @@
 using Microsoft.AspNetCore.SignalR;
-using PeepoGuessrApi.Entities.Databases.Account;
-using PeepoGuessrApi.Entities.Databases.Lobby;
 using PeepoGuessrApi.Entities.Response.Hubs.Game;
 using PeepoGuessrApi.Hubs;
 using PeepoGuessrApi.Services.Interfaces.Account.Db;
-using PeepoGuessrApi.Services.Interfaces.LobbyDb;
-using IUserService = PeepoGuessrApi.Services.Interfaces.LobbyDb.IUserService;
-using UserDto = PeepoGuessrApi.Entities.Response.Hubs.Lobby.UserDto;
+using PeepoGuessrApi.Services.Interfaces.Lobby;
+using PeepoGuessrApi.Services.Interfaces.Lobby.Db;
+using IUserService = PeepoGuessrApi.Services.Interfaces.Lobby.Db.IUserService;
 
 namespace PeepoGuessrApi.HostedServices;
 
@@ -20,32 +18,22 @@ public class LobbyHostedService : IHostedService, IDisposable
     private readonly ILobbyTypeService _lobbyTypeService;
     private readonly IUserService _userService;
     private readonly IDivisionService _accountDivisionService;
-    private readonly IGameService _accountGameService;
-    private readonly IGameStatusService _accountGameStatusService;
-    private readonly ISummaryService _accountSummaryService;
-    private readonly IGameTypeService _accountGameTypeService;
     private readonly Services.Interfaces.Game.Db.IGameService _gameGameService;
-    private readonly Services.Interfaces.Game.Db.IGameTypeService _gameGameTypeService;
+    private readonly IStartGameService _startGameService;
 
     public LobbyHostedService(ILogger<LobbyHostedService> logger, IConfiguration configuration, IHubContext<LobbyHub> lobbyHubContext,
-        IDivisionService accountDivisionService, ILobbyTypeService lobbyTypeService, IUserService userService, 
-        IGameService accountGameService, IGameStatusService accountGameStatusService, ISummaryService accountSummaryService, 
-        IGameTypeService accountGameTypeService, Services.Interfaces.Game.Db.IGameService gameGameService,
-        Services.Interfaces.Game.Db.IGameTypeService gameGameTypeService)
+        ILobbyTypeService lobbyTypeService, IUserService userService, IDivisionService accountDivisionService,
+        Services.Interfaces.Game.Db.IGameService gameGameService, IStartGameService startGameService)
     {
         _semaphore = new SemaphoreSlim(1);
         _logger = logger;
         _configuration = configuration;
         _lobbyHubContext = lobbyHubContext;
-        _accountDivisionService = accountDivisionService;
         _lobbyTypeService = lobbyTypeService;
         _userService = userService;
-        _accountGameService = accountGameService;
-        _accountGameStatusService = accountGameStatusService;
-        _accountSummaryService = accountSummaryService;
-        _accountGameTypeService = accountGameTypeService;
+        _accountDivisionService = accountDivisionService;
         _gameGameService = gameGameService;
-        _gameGameTypeService = gameGameTypeService;
+        _startGameService = startGameService;
     }
     
     public Task StartAsync(CancellationToken cancellationToken)
@@ -73,184 +61,50 @@ public class LobbyHostedService : IHostedService, IDisposable
         if (int.TryParse(_configuration["Game:Limit"], out var limit) && gamesCount >= limit)
         {
             await _lobbyHubContext.Clients.Group("DelayHolder").SendAsync("Delayed");
+            
             var users = await _userService.FindList();
             foreach (var user in users)
                 await _lobbyHubContext.Groups.RemoveFromGroupAsync(user.ConnectionId, "DelayHolder");
+            
             return;
         }
         
-        await CheckGame("singleplayer");
-        //await CheckGame("multiplayer");
-    }
-
-    private async Task CheckGame(string gameTypeName)
-    {
-        var lobby = await _lobbyTypeService.FindInclude(gameTypeName);
-        if (lobby == null)
-            return;
-        var lobbyAccountGameType = await _accountGameTypeService.Find(gameTypeName);
-        if (lobbyAccountGameType == null)
-            return;
-        var lobbyGameGameType = await _gameGameTypeService.Find(gameTypeName);
-        if (lobbyGameGameType == null)
-            return;
-        switch (gameTypeName)
+        var singleplayer = await _lobbyTypeService.FindInclude("singleplayer");
+        if (singleplayer != null)
         {
-            case "singleplayer":
-                await CreateSingleGames(lobby, lobbyAccountGameType, lobbyGameGameType);
-                break;
-            case "multiplayer":// or "randomEvents":
-                await CreateClassicGames(lobby, lobbyAccountGameType, lobbyGameGameType);
-                break;
-        }
-    }
-
-    private async Task CreateSingleGames(LobbyType lobby, GameType accountGameType, Entities.Databases.Game.GameType gameGameType)
-    {
-        foreach (var user in lobby.Users)
-        {
-            var firstUser = user.IsGameFounded ? null : user;
-            if (firstUser == null)
-                continue;
-
-            var accountGameStatus = await _accountGameStatusService.Find("active");
-            if (accountGameStatus == null)
-                continue;
-                
-            var accountGame = new Game
+            foreach (var user in singleplayer.Users)
             {
-                GameTypeId = accountGameType.Id,
-                GameStatusId = accountGameStatus.Id,
-                Code = Guid.NewGuid().ToString(),
-                DateTime = DateTime.UtcNow
-            };
-            
-            if (!await _accountGameService.Create(accountGame))
-                continue;
-            accountGame = await _accountGameService.FindByCode(accountGame.Code);
-            if (accountGame == null)
-                continue;
-                
-            var game = new Entities.Databases.Game.Game
-            {
-                GameTypeId = gameGameType.Id,
-                GameId = accountGame.Id,
-                Code = accountGame.Code,
-                MapUrl = "",
-                RoundCount = 0,
-                Multiplier = 0,
-                RoundExpire = DateTime.UtcNow.AddSeconds(5)
-            };
-
-            if (!await _gameGameService.Create(game))
-            {
-                accountGame.GameStatusId = 2;
-                await _accountGameService.Update(accountGame);
-                continue;
-            }
-
-            await _accountSummaryService.Create(new Summary
-            {
-                GameId = game.GameId,
-                UserId = firstUser.UserId,
-                Score = firstUser.Score
-            });
-
-            firstUser.IsGameFounded = true;
-            await _userService.Update(firstUser);
-
-            await _lobbyHubContext.Clients.Client(firstUser.ConnectionId).SendAsync("GameFound", new GameDto(game.Code));
-        }
-    }
-    
-    private async Task CreateClassicGames(LobbyType lobby, GameType accountGameType, Entities.Databases.Game.GameType gameGameType)
-    {
-        foreach (var division in await _accountDivisionService.FindAll())
-        {
-            while (lobby.Users.Count(u => u.DivisionId == division.Id && !u.IsGameFounded) > 1)
-            {
-                var firstUser = lobby.Users.FirstOrDefault();
-                var lastUser = lobby.Users.LastOrDefault();
-                if (firstUser == null || lastUser == null || firstUser == lastUser)
-                    continue;
-
-                await _lobbyHubContext.Clients.Client(firstUser.ConnectionId).SendAsync("EnemyFound",
-                    new UserDto(lastUser.UserId, lastUser.Name, lastUser.ImageUrl, lastUser.DivisionId, lastUser.Score));
-                await _lobbyHubContext.Clients.Client(lastUser.ConnectionId).SendAsync("EnemyFound",
-                    new UserDto(firstUser.UserId, firstUser.Name, firstUser.ImageUrl, firstUser.DivisionId, firstUser.Score));
-
-                var accountGameStatus = await _accountGameStatusService.Find("active");
-                if (accountGameStatus == null)
-                {
-                    await _lobbyHubContext.Clients.Client(firstUser.ConnectionId).SendAsync("EnemyRevoke");
-                    await _lobbyHubContext.Clients.Client(lastUser.ConnectionId).SendAsync("EnemyRevoke");
-                    continue;
-                }
-                
-                var accountGame = new Game
-                {
-                    GameTypeId = accountGameType.Id,
-                    GameStatusId = accountGameStatus.Id,
-                    Code = Guid.NewGuid().ToString(),
-                    DateTime = DateTime.UtcNow
-                };
-
-                if (!await _accountGameService.Create(accountGame))
-                {
-                    await _lobbyHubContext.Clients.Client(firstUser.ConnectionId).SendAsync("EnemyRevoke");
-                    await _lobbyHubContext.Clients.Client(lastUser.ConnectionId).SendAsync("EnemyRevoke");
-                    continue;
-                }
-                accountGame = await _accountGameService.FindByCode(accountGame.Code);
-                if (accountGame == null)
-                {
-                    await _lobbyHubContext.Clients.Client(firstUser.ConnectionId).SendAsync("EnemyRevoke");
-                    await _lobbyHubContext.Clients.Client(lastUser.ConnectionId).SendAsync("EnemyRevoke");
-                    continue;
-                }
-                
-                var game = new Entities.Databases.Game.Game
-                {
-                    GameTypeId = gameGameType.Id,
-                    GameId = accountGame.Id,
-                    Code = accountGame.Code,
-                    MapUrl = "",
-                    RoundCount = 0,
-                    Multiplier = 0,
-                    RoundExpire = DateTime.UtcNow.AddSeconds(15)
-                };
-
-                if (await _gameGameService.Create(game))
-                {
-                    accountGame.GameStatusId = 2;
-                    await _accountGameService.Update(accountGame);
-                    await _lobbyHubContext.Clients.Client(firstUser.ConnectionId).SendAsync("EnemyRevoke");
-                    await _lobbyHubContext.Clients.Client(lastUser.ConnectionId).SendAsync("EnemyRevoke");
-                    continue;
-                }
-
-                await _accountSummaryService.Create(new Summary
-                {
-                    GameId = game.GameId,
-                    UserId = firstUser.UserId,
-                    Score = firstUser.Score
-                });
-                await _accountSummaryService.Create(new Summary
-                {
-                    GameId = game.GameId,
-                    UserId = lastUser.UserId,
-                    Score = lastUser.Score
-                });
-
-                firstUser.IsGameFounded = true;
-                lastUser.IsGameFounded = true;
-                await _userService.Update(firstUser);
-                await _userService.Update(lastUser);
-                
-                await _lobbyHubContext.Clients.Client(firstUser.ConnectionId).SendAsync("GameFound", new GameDto(game.Code));
-                await _lobbyHubContext.Clients.Client(lastUser.ConnectionId).SendAsync("GameFound", new GameDto(game.Code));
+                var code = Guid.NewGuid().ToString();
+                if (await _startGameService.StartSingleGame(user, "singleplayer", code))
+                    await _lobbyHubContext.Clients.Client(user.ConnectionId).SendAsync("GameFound", new GameDto(code));
+                else
+                    await _lobbyHubContext.Clients.Client(user.ConnectionId).SendAsync("MatchmakingTrouble");
             }
         }
+        
+        var multiplayer = await _lobbyTypeService.FindInclude("multiplayer");
+        if (multiplayer != null)
+        {
+            foreach (var division in await _accountDivisionService.FindAll())
+            {
+                var users = multiplayer.Users.Where(d => d.DivisionId == division.Id).ToList();
+                for (var i = 0; i < users.Count -1; i += 2)
+                {
+                    var user1 = users[i];
+                    var user2 = users[i + 1];
+                    var code = Guid.NewGuid().ToString();
+                    if (await _startGameService.StartMultiplayerGame(user1, user2, "multiplayer", code))
+                    {
+                        await _lobbyHubContext.Clients.Client(user1.ConnectionId).SendAsync("GameFound", new GameDto(code));
+                        await _lobbyHubContext.Clients.Client(user2.ConnectionId).SendAsync("GameFound", new GameDto(code));
+                        continue;
+                    }
+                    await _lobbyHubContext.Clients.Client(user1.ConnectionId).SendAsync("MatchmakingTrouble");
+                    await _lobbyHubContext.Clients.Client(user2.ConnectionId).SendAsync("MatchmakingTrouble");
+                }
+            }
+        }
+
     }
 
     public Task StopAsync(CancellationToken stoppingToken)

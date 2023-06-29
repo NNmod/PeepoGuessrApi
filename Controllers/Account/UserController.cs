@@ -9,8 +9,9 @@ using PeepoGuessrApi.Entities.Request.Twitch;
 using PeepoGuessrApi.Entities.Response;
 using PeepoGuessrApi.Services.Interfaces.Account.Db;
 using PeepoGuessrApi.Services.Interfaces.Maintenance;
+using PeepoGuessrApi.Services.Interfaces.Maintenance.Db;
 using PeepoGuessrApi.Services.Interfaces.Twitch;
-using IAuthorizationService = PeepoGuessrApi.Services.Interfaces.Maintenance.IAuthorizationService;
+using IAuthorizationService = PeepoGuessrApi.Services.Interfaces.Maintenance.Db.IAuthorizationService;
 using UserDto = PeepoGuessrApi.Entities.Response.Account.User.UserDto;
 
 namespace PeepoGuessrApi.Controllers.Account;
