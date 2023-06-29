@@ -116,7 +116,7 @@ public class GameHostedService : IHostedService, IDisposable
                 continue;
             }
 
-            var completeGame = gameTypeName == "singleplayer" ? await _finishGameService.CompleteNormal(game, 15, 0.33, 5)
+            var completeGame = gameTypeName == "singleplayer" ? await _finishGameService.CompleteNormal(game, 15, 0.33, 5, true)
                 : await _finishGameService.CompleteNormal(game, 15);
 
             if (completeGame != null)

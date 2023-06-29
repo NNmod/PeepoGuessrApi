@@ -13,13 +13,12 @@ public class FinishGameService : IFinishGameService
     private readonly Interfaces.Account.Db.IDivisionService _accountDivisionService;
     private readonly Interfaces.Account.Db.ISummaryService _accountSummaryService;
     private readonly IGameService _gameService;
-    private readonly IUserService _userService;
     
     public FinishGameService(Interfaces.Account.Db.IGameService accountGameService, 
         Interfaces.Account.Db.IGameStatusService accountGameStatusService,
         Interfaces.Account.Db.IRoundService accountRoundService, Interfaces.Account.Db.IUserService accountUserService,
         Interfaces.Account.Db.IDivisionService accountDivisionService, Interfaces.Account.Db.ISummaryService accountSummaryService,
-        IGameService gameService, IUserService userService)
+        IGameService gameService)
     {
         _accountGameService = accountGameService;
         _accountGameStatusService = accountGameStatusService;
@@ -28,7 +27,6 @@ public class FinishGameService : IFinishGameService
         _accountDivisionService = accountDivisionService;
         _accountSummaryService = accountSummaryService;
         _gameService = gameService;
-        _userService = userService;
     }
     
     public async Task<bool> Cancel(Entities.Databases.Game.Game game)
@@ -49,7 +47,7 @@ public class FinishGameService : IFinishGameService
     }
 
     public async Task<GameSummaryDto?> CompleteNormal(Entities.Databases.Game.Game game, int summaryDelay, double ratio = 1, 
-        int roundIgnoreCount = 0)
+        int roundIgnoreCount = 0, bool isSingle = false)
     {
         var accountGame = await _accountGameService.Find(game.GameId);
         if (accountGame == null)
@@ -59,18 +57,22 @@ public class FinishGameService : IFinishGameService
         if (accountRound == null)
             return null;
         
-        var winner = accountRound.RoundSummaries.MaxBy(u => u.Health);
-        if (winner == null)
-            return null;
-        
         var userSummaries = new List<GameUserSummaryDto>();
         var rounds = game.RoundCount > 20 ? 20 : game.RoundCount;
+        var winner = accountRound.RoundSummaries.MaxBy(u => u.Health);
+        if (isSingle)
+        {
+            if (rounds <= 5)
+                winner = null;
+        }
+        else
+        {
+            if (winner is { Health: 0 })
+                winner = null;
+        }
 
         foreach (var user in game.Users)
         {
-            if (await _userService.Remove(user.Id))
-                continue;
-            
             var accountUser = await _accountUserService.Find(user.UserId);
             var accountSummary = accountGame.Summaries.FirstOrDefault(s => s.UserId == user.UserId);
             if (accountUser == null || accountSummary == null)
@@ -80,7 +82,7 @@ public class FinishGameService : IFinishGameService
             var oldDivisionId = accountUser.DivisionId;
             var isWinner = false;
             
-            if (winner.UserId == user.UserId)
+            if (winner?.UserId == user.UserId)
             {
                 var score = (int)(rounds * 3 * ratio);
                 if (roundIgnoreCount > rounds)
@@ -90,7 +92,7 @@ public class FinishGameService : IFinishGameService
                 accountUser.Score += score;
                 isWinner = true;
             }
-            else
+            else if (!isSingle)
             {
                 var score = (int)((25 - rounds) * ratio);
                 accountUser.Score -= score;
@@ -103,6 +105,10 @@ public class FinishGameService : IFinishGameService
 
             var division = await _accountDivisionService.FindByScore(accountUser.Score);
             accountUser.DivisionId = division?.Id ?? accountUser.DivisionId;
+            
+            var upgrade = (division?.MaxScore ?? accountUser.Division?.MaxScore ?? 0) - accountUser.Score;
+            if (upgrade < 0)
+                upgrade = 0;
 
             accountSummary.DivisionId = accountUser.DivisionId;
             accountSummary.Score = accountUser.Score;
@@ -110,8 +116,8 @@ public class FinishGameService : IFinishGameService
             if (!await _accountUserService.Update(accountUser) || !await _accountSummaryService.Update(accountSummary))
                 continue;
             
-            userSummaries.Add(new GameUserSummaryDto(user.UserId, user.Name, user.ImageUrl, accountUser.DivisionId, 
-                accountUser.Score, oldScore, isWinner, oldDivisionId < accountUser.DivisionId, 
+            userSummaries.Add(new GameUserSummaryDto(user.UserId, accountUser.DivisionId, 
+                accountUser.Score, oldScore, accountUser.Wins, upgrade, isWinner, oldDivisionId < accountUser.DivisionId, 
                 oldDivisionId > accountUser.DivisionId));
         }
         
