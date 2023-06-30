@@ -94,11 +94,8 @@ public class GameHub : Hub
             ImageUrl = accountUser.ImageUrl,
             DivisionId = accountUser.DivisionId
         };
-        var health = 5000;
-        var guessAvailable = 1;
-        Round? accountRound = null;
-        RoundSummary? accountRoundUser = null;
         
+        Round? accountRound = null;
         if (game.RoundCount > 0)
         {
             accountRound = await _accountRoundService.Find(accountGame, game.RoundCount);
@@ -108,17 +105,6 @@ public class GameHub : Hub
                 Context.Abort();
                 return;
             }
-
-            accountRoundUser = accountRound.RoundSummaries.FirstOrDefault(u => u.UserId == accountUser.Id);
-            if (accountRoundUser == null)
-            {
-                _logger.LogInformation("Game Disconnected User [{Time}]: accountRoundUser is null", DateTimeOffset.UtcNow);
-                Context.Abort();
-                return;
-            }
-
-            health = accountRoundUser.Health;
-            guessAvailable = accountRoundUser.GuessAvailable;
         }
         
         if (!await _userService.Create(user))
@@ -141,31 +127,30 @@ public class GameHub : Hub
             Context.Abort();
             return;
         }
-        
-        await Clients.Group(game.Code).SendAsync("NewUser", new UserDto(user.ConnectionId!, user.UserId, 
-            user.Name, user.ImageUrl, user.DivisionId, health, guessAvailable));
 
-        if (game.RoundCount > 0 && accountRoundUser is { PosX: not null, PosY: not null })
+        foreach (var summary in accountGame.Summaries)
         {
-            await Clients.Group(game.Code).SendAsync("UserGuess", new GuessDto(accountRoundUser.UserId, 
-                accountRoundUser.GuessAvailable, accountRoundUser.Distance));
+            var roundUser = accountRound?.RoundSummaries.FirstOrDefault(u => u.UserId == summary.UserId);
+            if (summary.User == null)
+                continue;
+            
+            var isConnected = game.Users.Any(u => u.UserId == summary.User.Id) || user.UserId == summary.User.Id;
+
+            await Clients.Caller.SendAsync("NewUser", new UserDto(user.UserId == summary.User?.Id ? 
+                    user.ConnectionId ?? string.Empty : string.Empty, summary.User!.Id, isConnected, summary.User!.Name, 
+                summary.User!.ImageUrl, summary.User!.DivisionId, game.RoundCount == 0 ? 5000 : roundUser?.Health ?? 5000, 
+                game.RoundCount == 0 ? 0 : roundUser?.GuessAvailable ?? 0));
+            
+            if (game.RoundCount == 0 || roundUser == null)
+                continue;
+            if (roundUser.PosX == null || roundUser.PosY == null)
+                continue;
+            
+            await Clients.Caller.SendAsync("UserGuess", new GuessDto(roundUser.UserId, roundUser.GuessAvailable, 
+                roundUser.Distance));
         }
         
-        foreach (var gameUser in game.Users)
-        {
-            await Clients.Caller.SendAsync("NewUser", new UserDto(gameUser.ConnectionId!, gameUser.UserId, 
-                gameUser.Name, gameUser.ImageUrl, gameUser.DivisionId, health, guessAvailable));
-            
-            if (game.RoundCount == 0 || accountRound == null)
-                continue;
-            
-            var roundUser = accountRound.RoundSummaries.FirstOrDefault(u => u.UserId == gameUser.UserId);
-            if (roundUser?.PosX == null || roundUser.PosY == null)
-                continue;
-            
-            await Clients.Caller.SendAsync("UserGuess", new GuessDto(roundUser.UserId, 
-                roundUser.GuessAvailable, roundUser.Distance));
-        }
+        await Clients.Group(game.Code).SendAsync("UserStatus", new UserStatusDto(user.UserId, true));
         
         if (user.Game?.RoundCount > 0)
             await Clients.Caller.SendAsync("NewRound",
@@ -195,8 +180,9 @@ public class GameHub : Hub
         if (user.ConnectionId == Context.ConnectionId)
         {
             await _userService.Remove(user.Id);
-            await Clients.Group(user.Game!.Code).SendAsync("RemoveUser", new RemoveUserDto(
-                user.ConnectionId!, user.UserId));
+            
+            await Clients.Group(user.Game!.Code).SendAsync("UserStatus", new UserStatusDto(user.UserId, 
+                false));
         }
         await base.OnDisconnectedAsync(exception);
     }
