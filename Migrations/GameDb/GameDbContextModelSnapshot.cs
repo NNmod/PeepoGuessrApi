@@ -111,7 +111,7 @@ namespace PeepoGuessrApi.Migrations.GameDb
                             Id = 2,
                             IsPromotionEnable = true,
                             Name = "Multiplayer",
-                            RoundDuration = 300,
+                            RoundDuration = 180,
                             RoundPromotionDuration = 15
                         },
                         new
@@ -127,7 +127,7 @@ namespace PeepoGuessrApi.Migrations.GameDb
                             Id = 4,
                             IsPromotionEnable = true,
                             Name = "RandomEvents",
-                            RoundDuration = 300,
+                            RoundDuration = 180,
                             RoundPromotionDuration = 15
                         });
                 });
