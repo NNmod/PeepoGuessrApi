@@ -71,18 +71,17 @@ public class FinishGameService : IFinishGameService
                 winner = null;
         }
 
-        foreach (var user in game.Users)
+        foreach (var summary in accountGame.Summaries)
         {
-            var accountUser = await _accountUserService.Find(user.UserId);
-            var accountSummary = accountGame.Summaries.FirstOrDefault(s => s.UserId == user.UserId);
-            if (accountUser == null || accountSummary == null)
+            var accountUser = await _accountUserService.Find(summary.UserId);
+            if (accountUser == null || summary.User == null)
                 continue;
             
             var oldScore = accountUser.Score;
             var oldDivisionId = accountUser.DivisionId;
             var isWinner = false;
             
-            if (winner?.UserId == user.UserId)
+            if (winner?.UserId == summary.User.Id)
             {
                 var score = (int)(rounds * 3 * ratio);
                 if (roundIgnoreCount > rounds)
@@ -110,13 +109,13 @@ public class FinishGameService : IFinishGameService
             if (upgrade < 0)
                 upgrade = 0;
 
-            accountSummary.DivisionId = accountUser.DivisionId;
-            accountSummary.Score = accountUser.Score;
+            summary.DivisionId = accountUser.DivisionId;
+            summary.Score = accountUser.Score;
 
-            if (!await _accountUserService.Update(accountUser) || !await _accountSummaryService.Update(accountSummary))
+            if (!await _accountUserService.Update(accountUser) || !await _accountSummaryService.Update(summary))
                 continue;
             
-            userSummaries.Add(new GameUserSummaryDto(user.UserId, accountUser.DivisionId, 
+            userSummaries.Add(new GameUserSummaryDto(summary.User.Id, accountUser.DivisionId, 
                 accountUser.Score, oldScore, accountUser.Wins, upgrade, isWinner, oldDivisionId < accountUser.DivisionId, 
                 oldDivisionId > accountUser.DivisionId));
         }

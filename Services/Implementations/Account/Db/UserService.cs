@@ -54,7 +54,7 @@ public class UserService : IUserService
         {
             TwitchId = user.TwitchId,
             DivisionId = user.DivisionId,
-            Name = user.Name,
+            Name = user.Name.ToUpper(),
             ImageUrl = user.ImageUrl,
             Score = user.Score,
             Wins = user.Wins,
@@ -80,7 +80,7 @@ public class UserService : IUserService
             Id = user.Id,
             TwitchId = user.TwitchId,
             DivisionId = user.DivisionId,
-            Name = user.Name,
+            Name = user.Name.ToUpper(),
             ImageUrl = user.ImageUrl,
             Score = user.Score,
             Wins = user.Wins,

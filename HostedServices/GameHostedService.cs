@@ -53,7 +53,7 @@ public class GameHostedService : IHostedService, IDisposable
     private async Task DoWork()
     {
         await CheckGameTypeGames("singleplayer");
-        //await CheckGameTypeGames("multiplayer");
+        await CheckGameTypeGames("multiplayer");
     }
 
     private async Task CheckGameTypeGames(string gameTypeName)
