@@ -8,6 +8,9 @@ public class User
     [Key]
     public int Id { get; set; }
     public required string TwitchId { get; set; }
+    [ForeignKey("Role")]
+    public int RoleId { get; set; }
+    public virtual Role? Role { get; set; }
     [ForeignKey("Division")]
     public int DivisionId { get; set; }
     public virtual Division? Division { get; set; }
@@ -21,6 +24,7 @@ public class User
 
     public User()
     {
+        RoleId = 3;
         Update = DateTime.UtcNow;
         Summaries = new List<Summary>();
     }

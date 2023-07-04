@@ -45,6 +45,7 @@ public class GameService : IGameService
         await using var context = await _accountDbContextFactory.CreateDbContextAsync();
         return await context.Games
             .Include(s => s.Summaries)
+            .OrderByDescending(d => d.DateTime)
             .FirstOrDefaultAsync(g => g.Summaries.Any(u => u.UserId == userId) && g.GameStatusId == gameStatus.Id);
     }
 

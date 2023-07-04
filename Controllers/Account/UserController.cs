@@ -30,10 +30,12 @@ public class UserController : ControllerBase
     private readonly IGameService _gameService;
     private readonly IGameStatusService _gameStatusService;
     private readonly Services.Interfaces.Game.Db.IGameService _gameGameService;
+    private readonly IWorkService _maintenanceWorkService;
 
     public UserController(IConfiguration configuration, IAccessService accessService, IOAuth2Service oAuth2Service,
         IGetUsersService getUsersService, IAuthorizationService authorizationService, IUserService userService,
-        IGameService gameService, IGameStatusService gameStatusService, Services.Interfaces.Game.Db.IGameService gameGameService)
+        IGameService gameService, IGameStatusService gameStatusService, Services.Interfaces.Game.Db.IGameService gameGameService,
+        IWorkService maintenanceWorkService)
     {
         _configuration = configuration;
         _accessService = accessService;
@@ -44,6 +46,7 @@ public class UserController : ControllerBase
         _gameService = gameService;
         _gameStatusService = gameStatusService;
         _gameGameService = gameGameService;
+        _maintenanceWorkService = maintenanceWorkService;
     }
 
     [HttpGet("top")]
@@ -56,7 +59,7 @@ public class UserController : ControllerBase
         {
             Pages = pages,
             Items = items.Select(u => new UserDto(u.Id, u.TwitchId, u.Name, u.ImageUrl, u.DivisionId, u.Score, u.Wins, 
-                    null, null))
+                    null, null, null))
                 .ToList()
         });
     }
@@ -73,6 +76,7 @@ public class UserController : ControllerBase
         var gameStatus = await _gameStatusService.Find("active");
         var game = gameStatus == null ? null : await _gameService.FindByUserAndStatus(user.Id, gameStatus);
         var gameGame = game == null ? null : await _gameGameService.Find(game.Id);
+        var works = await _maintenanceWorkService.FindActive();
         if (DateTime.UtcNow.Subtract(user.Update).Hours > 12)
         {
             var access = await _accessService.Find();
@@ -92,7 +96,7 @@ public class UserController : ControllerBase
             var userDto = await _getUsersService.GetUser(user.TwitchId, _configuration["Twitch:ClientId"]!, access.Token!);
             if (userDto == null)
                 return Ok(new UserDto(user.Id, user.TwitchId, user.Name, user.ImageUrl, user.DivisionId, user.Score, user.Wins,
-                    gameGame?.Code, gameGame?.RoundExpire));
+                    gameGame?.Code, gameGame?.RoundExpire, works?.Expire));
             user.Name = userDto.Display_Name ?? user.Name;
             user.ImageUrl = userDto.Profile_Image_Url ?? user.ImageUrl;
             user.Update = DateTime.UtcNow;
@@ -102,7 +106,7 @@ public class UserController : ControllerBase
         if (user == null)
             return NotFound(new ErrorDto<object?>(404, nameof(GetUser), null));
         return Ok(new UserDto(user.Id, user.TwitchId, user.Name, user.ImageUrl, user.DivisionId, user.Score, user.Wins,
-            gameGame?.Code, gameGame?.RoundExpire));
+            gameGame?.Code, gameGame?.RoundExpire, user.RoleId > 2 ? works?.Expire : null));
     }
 
     [AllowAnonymous]
@@ -155,6 +159,7 @@ public class UserController : ControllerBase
             {
                 DivisionId = 1,
                 TwitchId = userDto.Id,
+                RoleId = 3,
                 Name = userDto.Display_Name,
                 ImageUrl = userDto.Profile_Image_Url,
                 Score = 200,

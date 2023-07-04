@@ -10,6 +10,7 @@ public class AccountDbContext : DbContext
     public DbSet<GameStatus> GameStatuses { get; set; }
     public DbSet<GameType> GameTypes { get; set; }
     public DbSet<Map> Maps { get; set; }
+    public DbSet<Role> Roles { get; set; }
     public DbSet<Round> Rounds { get; set; }
     public DbSet<RoundSummary> RoundSummaries { get; set; }
     public DbSet<Summary> Summaries { get; set; }
@@ -37,6 +38,10 @@ public class AccountDbContext : DbContext
             new GameStatus { Id = 1, Name = "Active" },
             new GameStatus { Id = 2, Name = "Canceled" },
             new GameStatus { Id = 3, Name = "Completed" });
+        modelBuilder.Entity<Role>().HasData(
+            new Role { Id = 1, Name = "Admin" },
+            new Role { Id = 2, Name = "Tester" },
+            new Role { Id = 3, Name = "User" });
         base.OnModelCreating(modelBuilder);
     }
 }

@@ -28,6 +28,6 @@ public class GameController : ControllerBase
         return Ok(new GameDto(game.Id, game.Code, game.GameType!.Name, game.GameStatus!.Name,
             game.DateTime, game.Rounds.Select(r => new GameRoundDto(r.Id, r.Map!.Name, r.Count)).ToList(), 
             game.Summaries.Select(s => new UserDto(s.User!.Id, s.User.TwitchId, s.User.Name, s.User.ImageUrl, 
-                s.DivisionId, s.Score, s.User.Wins, null, null)).ToList()));
+                s.DivisionId, s.Score, s.User.Wins, null, null, null)).ToList()));
     }
 }

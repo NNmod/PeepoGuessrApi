@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using PeepoGuessrApi.Entities.Databases.Lobby;
+using PeepoGuessrApi.Entities.Response.Hubs;
 using PeepoGuessrApi.Entities.Response.Hubs.Lobby;
 using PeepoGuessrApi.Services.Interfaces.Lobby.Db;
+using PeepoGuessrApi.Services.Interfaces.Maintenance.Db;
 
 namespace PeepoGuessrApi.Hubs;
 
@@ -16,12 +18,13 @@ public class LobbyHub : Hub
     private readonly Services.Interfaces.Game.Db.IGameService _gameGameService;
     private readonly ILobbyTypeService _lobbyTypeService;
     private readonly IUserService _userService;
+    private readonly IWorkService _maintenanceWorkService;
 
     public LobbyHub(ILogger<LobbyHub> logger, Services.Interfaces.Account.Db.IUserService accountUserService,
         Services.Interfaces.Account.Db.IGameStatusService accountGameStatusService,
         Services.Interfaces.Account.Db.IGameService accountGameService,
         Services.Interfaces.Game.Db.IGameService gameGameService, ILobbyTypeService lobbyTypeService, 
-        IUserService userService)
+        IUserService userService, IWorkService maintenanceWorkService)
     {
         _logger = logger;
         _accountUserService = accountUserService;
@@ -30,6 +33,7 @@ public class LobbyHub : Hub
         _accountGameService = accountGameService;
         _gameGameService = gameGameService;
         _userService = userService;
+        _maintenanceWorkService = maintenanceWorkService;
         _logger.LogInformation("Lobby Hub Startup [{Time}]", DateTimeOffset.UtcNow);
     }
     
@@ -50,8 +54,20 @@ public class LobbyHub : Hub
             _logger.LogInformation("Lobby Disconnected User [{Time}]: accountUser is null", DateTimeOffset.UtcNow);
             Context.Abort();
             return;
-        }  
-        
+        }
+
+        if (accountUser.RoleId > 2)
+        {
+            var works = await _maintenanceWorkService.FindActive();
+            if (works != null)
+            {
+                await Clients.Caller.SendAsync("MaintenanceExpire", new MaintenanceDto(works.Expire));
+                _logger.LogInformation("Lobby Disconnected User [{Time}]: maintenance abort", DateTimeOffset.UtcNow);
+                Context.Abort();
+                return;
+            }
+        }
+
         var lobby = (string?)httpContext.GetRouteValue("lobby");
         var lobbyType = await _lobbyTypeService.Find(lobby!);
         if (lobbyType == null)

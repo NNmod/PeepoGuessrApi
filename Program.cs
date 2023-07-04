@@ -37,6 +37,7 @@ builder.Services.AddScoped<IGameService, GameService>();
 builder.Services.AddScoped<IGameStatusService, GameStatusService>();
 builder.Services.AddScoped<IGameTypeService, GameTypeService>();
 builder.Services.AddScoped<IMapService, MapService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IRoundService, RoundService>();
 builder.Services.AddScoped<IRoundSummaryService, RoundSummaryService>();
 builder.Services.AddScoped<ISummaryService, SummaryService>();
@@ -78,6 +79,7 @@ builder.Services.AddScoped<IStartGameService, StartGameService>();
 
 builder.Services.AddScoped<IAccessService, AccessService>();
 builder.Services.AddScoped<IAuthorizationService, AuthorizationService>();
+builder.Services.AddScoped<IWorkService, WorkService>();
 
 #endregion
 

@@ -26,6 +26,7 @@ public class UserService : IUserService
         return await context.Users
             .OrderByDescending(d => d.DivisionId)
             .Include(d => d.Division)
+            .Include(r => r.Role)
             .Skip(skip)
             .Take(take)
             .ToListAsync();
@@ -36,6 +37,7 @@ public class UserService : IUserService
         await using var context = await _accountDbContextFactory.CreateDbContextAsync();
         return await context.Users
             .Include(d => d.Division)
+            .Include(r => r.Role)
             .FirstOrDefaultAsync(u => u.Id == id);
     }
 
@@ -45,6 +47,7 @@ public class UserService : IUserService
         return await context.Users
             .OrderByDescending(d => d.DivisionId)
             .Include(d => d.Division)
+            .Include(r => r.Role)
             .FirstOrDefaultAsync(u => u.TwitchId == twitchId);
     }
 
@@ -54,6 +57,7 @@ public class UserService : IUserService
         {
             TwitchId = user.TwitchId,
             DivisionId = user.DivisionId,
+            RoleId = user.RoleId,
             Name = user.Name.ToUpper(),
             ImageUrl = user.ImageUrl,
             Score = user.Score,
@@ -80,6 +84,7 @@ public class UserService : IUserService
             Id = user.Id,
             TwitchId = user.TwitchId,
             DivisionId = user.DivisionId,
+            RoleId = user.RoleId,
             Name = user.Name.ToUpper(),
             ImageUrl = user.ImageUrl,
             Score = user.Score,

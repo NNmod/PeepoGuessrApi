@@ -7,6 +7,7 @@ public class MaintenanceDbContext : DbContext
 {
     public DbSet<Access> Accesses { get; set; }
     public DbSet<Authorization> Authorizations { get; set; }
+    public DbSet<Work> Works { get; set; }
 
     public MaintenanceDbContext(DbContextOptions<MaintenanceDbContext> options) : base(options)
     {

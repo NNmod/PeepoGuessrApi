@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using PeepoGuessrApi.Entities.Databases.Account;
+using PeepoGuessrApi.Entities.Response.Hubs;
 using PeepoGuessrApi.Entities.Response.Hubs.Game;
 using PeepoGuessrApi.Services.Interfaces.Game.Db;
+using PeepoGuessrApi.Services.Interfaces.Maintenance.Db;
 using User = PeepoGuessrApi.Entities.Databases.Game.User;
 
 namespace PeepoGuessrApi.Hubs;
@@ -16,11 +18,12 @@ public class GameHub : Hub
     private readonly Services.Interfaces.Account.Db.IRoundService _accountRoundService;
     private readonly IGameService _gameService;
     private readonly IUserService _userService;
+    private readonly IWorkService _maintenanceWorkService;
 
     public GameHub(ILogger<GameHub> logger, Services.Interfaces.Account.Db.IUserService accountUserService, 
         Services.Interfaces.Account.Db.IGameService accountGameService,  
         Services.Interfaces.Account.Db.IRoundService accountRoundService,
-        IGameService gameService, IUserService userService)
+        IGameService gameService, IUserService userService, IWorkService maintenanceWorkService)
     {
         _logger = logger;
         _accountUserService = accountUserService;
@@ -28,6 +31,7 @@ public class GameHub : Hub
         _accountRoundService = accountRoundService;
         _gameService = gameService;
         _userService = userService;
+        _maintenanceWorkService = maintenanceWorkService;
         _logger.LogInformation("Game Hub Startup [{Time}]", DateTimeOffset.UtcNow);
     }
     
@@ -48,6 +52,18 @@ public class GameHub : Hub
             _logger.LogInformation("Game Disconnected User [{Time}]: accountUser is null", DateTimeOffset.UtcNow);
             Context.Abort();
             return;
+        }
+        
+        if (accountUser.RoleId > 2)
+        {
+            var works = await _maintenanceWorkService.FindActive();
+            if (works != null)
+            {
+                await Clients.Caller.SendAsync("MaintenanceExpire", new MaintenanceDto(works.Expire));
+                _logger.LogInformation("Game Disconnected User [{Time}]: maintenance abort", DateTimeOffset.UtcNow);
+                Context.Abort();
+                return;
+            }
         }
         
         var user = await _userService.Find(accountUser.Id);
