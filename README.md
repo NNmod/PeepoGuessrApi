@@ -11,7 +11,7 @@ Guessr where you are, depends on environment around you.
 PeepoGuessr is not ready to use project and require changes to startup your own game based on PeepoGuessr.
 
 ### Requirements
-PeepoGuessr Api require [https://github.com/NNmod/PeepoGuessrVue](PeepoGuessr Vue) project to work.
+PeepoGuessr Api require [PeepoGuessr Vue](https://github.com/NNmod/PeepoGuessrVue) project to work.
 
 ### Configuration
 PeepoGuessr Api use configuration json below:
