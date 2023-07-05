@@ -1,8 +1,5 @@
 [![title-banner](https://cdn.nnmod.com/ppg-banner.png)](https://ppg.nnmod.com/)
 
-<br>
-<br>
-
 ## What is PeepoGuessr
 PeepoGuessr is a game 'find a place' in the special worlds from minecraft server Pepeland.
 Guessr where you are, depends on environment around you.
