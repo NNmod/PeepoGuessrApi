@@ -10,7 +10,5 @@ public class UserInvite
     [ForeignKey("User")]
     public int UserId { get; set; }
     public virtual User? User { get; set; }
-    [ForeignKey("InvitedUser")]
-    public int InvitedUserId { get; set; }
-    public virtual User? InvitedUser { get; set; }
+    public int RequestedUserId { get; set; }
 }

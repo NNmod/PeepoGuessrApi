@@ -19,11 +19,10 @@ public class User
     public bool IsRandomAcceptable { get; set; }
     public bool IsGameFounded { get; set; }
     
-    [InverseProperty("User")]
-    public List<UserInvite> Invites { get; set; }
+    public List<UserInvite> UserInvites { get; set;}
 
     public User()
     {
-        Invites = new List<UserInvite>();
+        UserInvites = new List<UserInvite>();
     }
 }

@@ -26,7 +26,7 @@ public class LobbyTypeService : ILobbyTypeService
         await using var context = await _lobbyDbContextFactory.CreateDbContextAsync();
         return await context.LobbyTypes
             .Include(u => u.Users)
-            .ThenInclude(ui => ui.Invites)
+            .ThenInclude(ui => ui.UserInvites)
             .FirstOrDefaultAsync(lt => string.Equals(lt.Name.ToLower(), name.ToLower()));
     }
 }

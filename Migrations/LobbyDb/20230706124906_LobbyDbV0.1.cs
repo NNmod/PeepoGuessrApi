@@ -39,6 +39,7 @@ namespace PeepoGuessrApi.Migrations.LobbyDb
                     ImageUrl = table.Column<string>(type: "text", nullable: false),
                     DivisionId = table.Column<int>(type: "integer", nullable: false),
                     Score = table.Column<int>(type: "integer", nullable: false),
+                    IsRandomAcceptable = table.Column<bool>(type: "boolean", nullable: false),
                     IsGameFounded = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
@@ -48,6 +49,26 @@ namespace PeepoGuessrApi.Migrations.LobbyDb
                         name: "FK_Users_LobbyTypes_LobbyTypeId",
                         column: x => x.LobbyTypeId,
                         principalTable: "LobbyTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserInvites",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    UserId = table.Column<int>(type: "integer", nullable: false),
+                    RequestedUserId = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserInvites", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_UserInvites_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -64,6 +85,11 @@ namespace PeepoGuessrApi.Migrations.LobbyDb
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_UserInvites_UserId",
+                table: "UserInvites",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Users_LobbyTypeId",
                 table: "Users",
                 column: "LobbyTypeId");
@@ -72,6 +98,9 @@ namespace PeepoGuessrApi.Migrations.LobbyDb
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "UserInvites");
+
             migrationBuilder.DropTable(
                 name: "Users");
 

@@ -69,7 +69,7 @@ public class LobbyHub : Hub
         }
 
         var lobby = (string?)httpContext.GetRouteValue("lobby");
-        var lobbyType = await _lobbyTypeService.Find(lobby!);
+        var lobbyType = await _lobbyTypeService.FindInclude(lobby!);
         if (lobbyType == null)
         {
             _logger.LogInformation("Lobby Disconnected User [{Time}]: lobbyType is null", DateTimeOffset.UtcNow);
@@ -130,11 +130,11 @@ public class LobbyHub : Hub
             await Clients.Caller.SendAsync("NewUser", new UserDto(lobbyUser.UserId, lobbyUser.Name, lobbyUser.ImageUrl,
                 lobbyUser.DivisionId, lobbyUser.Score, lobbyUser.IsRandomAcceptable, lobbyUser.IsGameFounded));
         }
-        await Clients.Group(user.LobbyType!.Name.ToLower() + "-" + user.DivisionId).SendAsync("NewUser", 
+        await Clients.Group(lobbyType.Name.ToLower() + "-" + user.DivisionId).SendAsync("NewUser", 
             new UserDto(user.UserId, user.Name, user.ImageUrl, user.DivisionId, user.Score, user.IsRandomAcceptable, 
                 user.IsGameFounded));
         
-        await Groups.AddToGroupAsync(Context.ConnectionId, user.LobbyType!.Name.ToLower() + "-" + user.DivisionId);
+        await Groups.AddToGroupAsync(Context.ConnectionId, lobbyType.Name.ToLower() + "-" + user.DivisionId);
         await Groups.AddToGroupAsync(Context.ConnectionId, "DelayHolder");
         await base.OnConnectedAsync();
     }

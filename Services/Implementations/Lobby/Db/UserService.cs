@@ -19,7 +19,7 @@ public class UserService : IUserService
         await using var context = await _lobbyDbContextFactory.CreateDbContextAsync();
         return await context.Users
             .Include(lt => lt.LobbyType)
-            .Include(ui => ui.Invites)
+            .Include(ui => ui.UserInvites)
             .FirstOrDefaultAsync(u => u.UserId == userId);
     }
 
@@ -88,7 +88,12 @@ public class UserService : IUserService
     public async Task<bool> Remove(int id)
     {
         await using var context = await _lobbyDbContextFactory.CreateDbContextAsync();
-        var user = await context.Users.Include(ui => ui.Invites).FirstOrDefaultAsync(u => u.Id == id);
+        var user = await context.Users.Include(ui => ui.UserInvites).FirstOrDefaultAsync(u => u.Id == id);
+        if (user == null)
+            return false;
+        foreach (var invite in user.UserInvites)
+            context.Remove(invite);
+        user = await context.Users.FirstOrDefaultAsync(u => u.Id == id);
         if (user == null)
             return false;
         context.Remove(user);

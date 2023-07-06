@@ -75,6 +75,8 @@ public class LobbyHostedService : IHostedService, IDisposable
         {
             foreach (var user in singleplayer.Users)
             {
+                if (user.IsGameFounded)
+                    continue;
                 var code = Guid.NewGuid().ToString();
                 if (await _startGameService.StartSingleGame(user, "singleplayer", code))
                     await _lobbyHubContext.Clients.Client(user.ConnectionId).SendAsync("GameFound", new GameDto(code));
@@ -105,7 +107,7 @@ public class LobbyHostedService : IHostedService, IDisposable
                     await _lobbyHubContext.Clients.Client(user2.ConnectionId).SendAsync("MatchmakingTrouble");
                 }*/
                 
-                var inviteUsers = multiplayer.Users.Where(d => d.DivisionId == division.Id)
+                var inviteUsers = multiplayer.Users.Where(d => d.DivisionId == division.Id && !d.IsGameFounded)
                     .ToList();
                 var ignoreInviteUsers = new List<User>();
                 foreach (var user in inviteUsers)
@@ -114,9 +116,9 @@ public class LobbyHostedService : IHostedService, IDisposable
                         continue;
 
                     var invitedUser = inviteUsers.FirstOrDefault(
-                        u => u.Id != user.Id && u.Invites.Any(ui => ui.InvitedUserId == user.UserId) 
-                                             && user.Invites.Any(ui => ui.InvitedUserId == u.UserId) || 
-                             u.Id != user.Id && u.IsRandomAcceptable && user.Invites.Any(ui => ui.InvitedUserId == u.UserId) ||
+                        u => u.Id != user.Id && u.UserInvites.Any(ui => ui.RequestedUserId == user.UserId) 
+                                             && user.UserInvites.Any(ui => ui.RequestedUserId == u.UserId) || 
+                             u.Id != user.Id && u.IsRandomAcceptable && user.UserInvites.Any(ui => ui.RequestedUserId == u.UserId) ||
                              u.Id != user.Id && u.IsRandomAcceptable && user.IsRandomAcceptable);
                     if (invitedUser == null)
                         continue;

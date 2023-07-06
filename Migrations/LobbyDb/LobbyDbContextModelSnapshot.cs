@@ -113,15 +113,13 @@ namespace PeepoGuessrApi.Migrations.LobbyDb
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("InvitedUserId")
+                    b.Property<int>("RequestedUserId")
                         .HasColumnType("integer");
 
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("InvitedUserId");
 
                     b.HasIndex("UserId");
 
@@ -141,19 +139,11 @@ namespace PeepoGuessrApi.Migrations.LobbyDb
 
             modelBuilder.Entity("PeepoGuessrApi.Entities.Databases.Lobby.UserInvite", b =>
                 {
-                    b.HasOne("PeepoGuessrApi.Entities.Databases.Lobby.User", "InvitedUser")
-                        .WithMany()
-                        .HasForeignKey("InvitedUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("PeepoGuessrApi.Entities.Databases.Lobby.User", "User")
-                        .WithMany("Invites")
+                        .WithMany("UserInvites")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("InvitedUser");
 
                     b.Navigation("User");
                 });
@@ -165,7 +155,7 @@ namespace PeepoGuessrApi.Migrations.LobbyDb
 
             modelBuilder.Entity("PeepoGuessrApi.Entities.Databases.Lobby.User", b =>
                 {
-                    b.Navigation("Invites");
+                    b.Navigation("UserInvites");
                 });
 #pragma warning restore 612, 618
         }

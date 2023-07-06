@@ -42,7 +42,7 @@ public class LobbyController : ControllerBase
         if (await _userService.Update(user))
         {
             await _lobbyHubContext.Clients.GroupExcept(user.LobbyType?.Name.ToLower() + '-' + user.DivisionId, 
-                user.ConnectionId).SendAsync("InviteAdded", new UserInviteDto(user.UserId));
+                user.ConnectionId).SendAsync("RandomUpdate", new UserRandomDto(user.UserId, user.IsRandomAcceptable));
             return Ok();
         }
         return StatusCode(500, new ErrorDto<RandomDto>(500, nameof(UpdateRandom), randomDto));
@@ -62,20 +62,20 @@ public class LobbyController : ControllerBase
         var invitedUser = await _userService.Find(inviteDto.UserId);
         if (invitedUser == null)
             return NotFound(new ErrorDto<InviteDto>(404, nameof(InvitePlayer), inviteDto));
-        if (user.Invites.Any(u => u.InvitedUserId == invitedUser.UserId))
+        if (user.UserInvites.Any(u => u.RequestedUserId == invitedUser.UserId))
             return Conflict(new ErrorDto<InviteDto>(409, nameof(InvitePlayer), inviteDto));
 
         var userInvite = new UserInvite
         {
             UserId = user.UserId,
-            InvitedUserId = invitedUser.UserId
+            RequestedUserId = invitedUser.UserId
         };
         if (await _userInviteService.Create(userInvite))
         {
             await _lobbyHubContext.Clients.Client(user.ConnectionId).SendAsync("InviteAdded", new UserInviteDto(
                 invitedUser.UserId));
             await _lobbyHubContext.Clients.Client(invitedUser.ConnectionId).SendAsync("InviteAchieve", new UserInviteDto(
-                invitedUser.UserId));
+                user.UserId));
             return Ok();
         }
         return StatusCode(500, new ErrorDto<InviteDto>(500, nameof(InvitePlayer), inviteDto));
@@ -92,7 +92,7 @@ public class LobbyController : ControllerBase
         if (user == null)
             return NotFound(new ErrorDto<InviteDto>(404, nameof(RemoveInvitePlayer), inviteDto));
 
-        var userInvite = user.Invites.FirstOrDefault(u => u.InvitedUserId == inviteDto.UserId);
+        var userInvite = user.UserInvites.FirstOrDefault(u => u.RequestedUserId == inviteDto.UserId);
         if (userInvite == null)
             return NotFound(new ErrorDto<InviteDto>(404, nameof(RemoveInvitePlayer), inviteDto));
         var invitedUser = await _userService.Find(userInvite.UserId);
@@ -103,9 +103,8 @@ public class LobbyController : ControllerBase
         {
             await _lobbyHubContext.Clients.Client(user.ConnectionId).SendAsync("InviteRemoved", new UserInviteDto(
                 invitedUser.UserId));
-            await _lobbyHubContext.Clients.Client(invitedUser.ConnectionId).SendAsync("InviteRevoked", new UserDto(
-                invitedUser.UserId, invitedUser.Name, invitedUser.ImageUrl, invitedUser.DivisionId, invitedUser.Score, 
-                invitedUser.IsRandomAcceptable, invitedUser.IsGameFounded));
+            await _lobbyHubContext.Clients.Client(invitedUser.ConnectionId).SendAsync("InviteRevoked", new UserInviteDto(
+                user.UserId));
             return Ok();
         }
         return StatusCode(500, new ErrorDto<InviteDto>(500, nameof(InvitePlayer), inviteDto)); 
