@@ -125,6 +125,16 @@ public class LobbyHub : Hub
             Context.Abort();
         }
 
+        foreach (var lobbyUser in lobbyType.Users.Where(u => u.DivisionId == user.DivisionId).ToList())
+        {
+            await Clients.Caller.SendAsync("NewUser", new UserDto(lobbyUser.UserId, lobbyUser.Name, lobbyUser.ImageUrl,
+                lobbyUser.DivisionId, lobbyUser.Score, lobbyUser.IsRandomAcceptable, lobbyUser.IsGameFounded));
+        }
+        await Clients.Group(user.LobbyType!.Name.ToLower() + "-" + user.DivisionId).SendAsync("NewUser", 
+            new UserDto(user.UserId, user.Name, user.ImageUrl, user.DivisionId, user.Score, user.IsRandomAcceptable, 
+                user.IsGameFounded));
+        
+        await Groups.AddToGroupAsync(Context.ConnectionId, user.LobbyType!.Name.ToLower() + "-" + user.DivisionId);
         await Groups.AddToGroupAsync(Context.ConnectionId, "DelayHolder");
         await base.OnConnectedAsync();
     }
@@ -146,6 +156,7 @@ public class LobbyHub : Hub
         }
         if (user.ConnectionId == Context.ConnectionId)
             await _userService.Remove(user.Id);
+        await Clients.All.SendAsync("RemoveUser", new UserInviteDto(user.UserId));
         await base.OnDisconnectedAsync(exception);
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using PeepoGuessrApi.Entities.Databases.Lobby;
 using PeepoGuessrApi.Entities.Response.Hubs.Game;
 using PeepoGuessrApi.Hubs;
 using PeepoGuessrApi.Services.Interfaces.Account.Db;
@@ -87,7 +88,8 @@ public class LobbyHostedService : IHostedService, IDisposable
         {
             foreach (var division in await _accountDivisionService.FindAll())
             {
-                var users = multiplayer.Users.Where(d => d.DivisionId == division.Id).ToList();
+                /*var users = multiplayer.Users.Where(d => d.DivisionId == division.Id && d.IsRandomAcceptable)
+                    .ToList();
                 for (var i = 0; i < users.Count -1; i += 2)
                 {
                     var user1 = users[i];
@@ -101,6 +103,34 @@ public class LobbyHostedService : IHostedService, IDisposable
                     }
                     await _lobbyHubContext.Clients.Client(user1.ConnectionId).SendAsync("MatchmakingTrouble");
                     await _lobbyHubContext.Clients.Client(user2.ConnectionId).SendAsync("MatchmakingTrouble");
+                }*/
+                
+                var inviteUsers = multiplayer.Users.Where(d => d.DivisionId == division.Id)
+                    .ToList();
+                var ignoreInviteUsers = new List<User>();
+                foreach (var user in inviteUsers)
+                {
+                    if (ignoreInviteUsers.Any(u => u.Id == user.Id))
+                        continue;
+
+                    var invitedUser = inviteUsers.FirstOrDefault(
+                        u => u.Id != user.Id && u.Invites.Any(ui => ui.InvitedUserId == user.UserId) 
+                                             && user.Invites.Any(ui => ui.InvitedUserId == u.UserId) || 
+                             u.Id != user.Id && u.IsRandomAcceptable && user.Invites.Any(ui => ui.InvitedUserId == u.UserId) ||
+                             u.Id != user.Id && u.IsRandomAcceptable && user.IsRandomAcceptable);
+                    if (invitedUser == null)
+                        continue;
+                    
+                    var code = Guid.NewGuid().ToString();
+                    if (await _startGameService.StartMultiplayerGame(user, invitedUser, "multiplayer", code))
+                    {
+                        ignoreInviteUsers.Add(invitedUser);
+                        await _lobbyHubContext.Clients.Client(user.ConnectionId).SendAsync("GameFound", new GameDto(code));
+                        await _lobbyHubContext.Clients.Client(invitedUser.ConnectionId).SendAsync("GameFound", new GameDto(code));
+                        break;
+                    }
+                    await _lobbyHubContext.Clients.Client(user.ConnectionId).SendAsync("MatchmakingTrouble");
+                    await _lobbyHubContext.Clients.Client(invitedUser.ConnectionId).SendAsync("MatchmakingTrouble");
                 }
             }
         }

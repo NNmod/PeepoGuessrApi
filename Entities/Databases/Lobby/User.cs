@@ -16,5 +16,14 @@ public class User
     public required string ImageUrl { get; set; }
     public int DivisionId { get; set; }
     public int Score { get; set; }
+    public bool IsRandomAcceptable { get; set; }
     public bool IsGameFounded { get; set; }
+    
+    [InverseProperty("User")]
+    public List<UserInvite> Invites { get; set; }
+
+    public User()
+    {
+        Invites = new List<UserInvite>();
+    }
 }

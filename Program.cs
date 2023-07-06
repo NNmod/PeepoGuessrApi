@@ -68,6 +68,7 @@ builder.Services.AddScoped<IStartRoundService, StartRoundService>();
 
 builder.Services.AddScoped<ILobbyTypeService, LobbyTypeService>();
 builder.Services.AddScoped<PeepoGuessrApi.Services.Interfaces.Lobby.Db.IUserService, PeepoGuessrApi.Services.Implementations.Lobby.Db.UserService>();
+builder.Services.AddScoped<IUserInviteService, UserInvitesService>();
 
 #endregion
 

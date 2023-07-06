@@ -7,7 +7,8 @@ public class LobbyDbContext : DbContext
 {
     public DbSet<LobbyType> LobbyTypes { get; set; }
     public DbSet<User> Users { get; set; }
-    
+    public DbSet<UserInvite> UserInvites { get; set; }
+
     public LobbyDbContext(DbContextOptions<LobbyDbContext> options) : base(options)
     {
     }

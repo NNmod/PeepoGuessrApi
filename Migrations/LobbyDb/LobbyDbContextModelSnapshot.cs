@@ -82,6 +82,9 @@ namespace PeepoGuessrApi.Migrations.LobbyDb
                     b.Property<bool>("IsGameFounded")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsRandomAcceptable")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("LobbyTypeId")
                         .HasColumnType("integer");
 
@@ -102,6 +105,29 @@ namespace PeepoGuessrApi.Migrations.LobbyDb
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("PeepoGuessrApi.Entities.Databases.Lobby.UserInvite", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("InvitedUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvitedUserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserInvites");
+                });
+
             modelBuilder.Entity("PeepoGuessrApi.Entities.Databases.Lobby.User", b =>
                 {
                     b.HasOne("PeepoGuessrApi.Entities.Databases.Lobby.LobbyType", "LobbyType")
@@ -113,9 +139,33 @@ namespace PeepoGuessrApi.Migrations.LobbyDb
                     b.Navigation("LobbyType");
                 });
 
+            modelBuilder.Entity("PeepoGuessrApi.Entities.Databases.Lobby.UserInvite", b =>
+                {
+                    b.HasOne("PeepoGuessrApi.Entities.Databases.Lobby.User", "InvitedUser")
+                        .WithMany()
+                        .HasForeignKey("InvitedUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PeepoGuessrApi.Entities.Databases.Lobby.User", "User")
+                        .WithMany("Invites")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("InvitedUser");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("PeepoGuessrApi.Entities.Databases.Lobby.LobbyType", b =>
                 {
                     b.Navigation("Users");
+                });
+
+            modelBuilder.Entity("PeepoGuessrApi.Entities.Databases.Lobby.User", b =>
+                {
+                    b.Navigation("Invites");
                 });
 #pragma warning restore 612, 618
         }
