@@ -19,7 +19,7 @@ public class UserInvitesService : IUserInviteService
         var addUserInvite = new UserInvite
         {
             UserId = userInvite.UserId,
-            RequestedUserId = userInvite.RequestedUserId
+            RequestedId = userInvite.RequestedId
         };
         await using var context = await _lobbyDbContextFactory.CreateDbContextAsync();
         await context.AddAsync(addUserInvite);

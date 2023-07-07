@@ -62,19 +62,19 @@ public class LobbyController : ControllerBase
         var invitedUser = await _userService.Find(inviteDto.UserId);
         if (invitedUser == null)
             return NotFound(new ErrorDto<InviteDto>(404, nameof(InvitePlayer), inviteDto));
-        if (user.UserInvites.Any(u => u.RequestedUserId == invitedUser.UserId))
+        if (user.UserInvites.Any(u => u.RequestedId == invitedUser.UserId))
             return Conflict(new ErrorDto<InviteDto>(409, nameof(InvitePlayer), inviteDto));
 
         var userInvite = new UserInvite
         {
-            UserId = user.UserId,
-            RequestedUserId = invitedUser.UserId
+            UserId = user.Id,
+            RequestedId = invitedUser.UserId
         };
         if (await _userInviteService.Create(userInvite))
         {
             await _lobbyHubContext.Clients.Client(user.ConnectionId).SendAsync("InviteAdded", new UserInviteDto(
                 invitedUser.UserId));
-            await _lobbyHubContext.Clients.Client(invitedUser.ConnectionId).SendAsync("InviteAchieve", new UserInviteDto(
+            await _lobbyHubContext.Clients.Client(invitedUser.ConnectionId).SendAsync("InviteAchieved", new UserInviteDto(
                 user.UserId));
             return Ok();
         }
@@ -92,14 +92,14 @@ public class LobbyController : ControllerBase
         if (user == null)
             return NotFound(new ErrorDto<InviteDto>(404, nameof(RemoveInvitePlayer), inviteDto));
 
-        var userInvite = user.UserInvites.FirstOrDefault(u => u.RequestedUserId == inviteDto.UserId);
+        var userInvite = user.UserInvites.FirstOrDefault(u => u.RequestedId == inviteDto.UserId);
         if (userInvite == null)
             return NotFound(new ErrorDto<InviteDto>(404, nameof(RemoveInvitePlayer), inviteDto));
-        var invitedUser = await _userService.Find(userInvite.UserId);
+        var invitedUser = await _userService.Find(userInvite.RequestedId);
         if (invitedUser == null)
             return NotFound(new ErrorDto<InviteDto>(404, nameof(RemoveInvitePlayer), inviteDto));
         
-        if (await _userInviteService.Remove(invitedUser.Id))
+        if (await _userInviteService.Remove(userInvite.Id))
         {
             await _lobbyHubContext.Clients.Client(user.ConnectionId).SendAsync("InviteRemoved", new UserInviteDto(
                 invitedUser.UserId));

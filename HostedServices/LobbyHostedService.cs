@@ -116,9 +116,9 @@ public class LobbyHostedService : IHostedService, IDisposable
                         continue;
 
                     var invitedUser = inviteUsers.FirstOrDefault(
-                        u => u.Id != user.Id && u.UserInvites.Any(ui => ui.RequestedUserId == user.UserId) 
-                                             && user.UserInvites.Any(ui => ui.RequestedUserId == u.UserId) || 
-                             u.Id != user.Id && u.IsRandomAcceptable && user.UserInvites.Any(ui => ui.RequestedUserId == u.UserId) ||
+                        u => u.Id != user.Id && u.UserInvites.Any(ui => ui.RequestedId == user.UserId) 
+                                             && user.UserInvites.Any(ui => ui.RequestedId == u.UserId) || 
+                             u.Id != user.Id && u.IsRandomAcceptable && user.UserInvites.Any(ui => ui.RequestedId == u.UserId) ||
                              u.Id != user.Id && u.IsRandomAcceptable && user.IsRandomAcceptable);
                     if (invitedUser == null)
                         continue;
