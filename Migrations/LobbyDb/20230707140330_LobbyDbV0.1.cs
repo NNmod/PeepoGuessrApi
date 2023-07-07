@@ -1,4 +1,4 @@
-﻿﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
@@ -53,6 +53,26 @@ namespace PeepoGuessrApi.Migrations.LobbyDb
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "UserInvites",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    UserId = table.Column<int>(type: "integer", nullable: false),
+                    RequestedId = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserInvites", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_UserInvites_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.InsertData(
                 table: "LobbyTypes",
                 columns: new[] { "Id", "Name" },
@@ -65,6 +85,11 @@ namespace PeepoGuessrApi.Migrations.LobbyDb
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_UserInvites_UserId",
+                table: "UserInvites",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Users_LobbyTypeId",
                 table: "Users",
                 column: "LobbyTypeId");
@@ -73,6 +98,9 @@ namespace PeepoGuessrApi.Migrations.LobbyDb
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "UserInvites");
+
             migrationBuilder.DropTable(
                 name: "Users");
 

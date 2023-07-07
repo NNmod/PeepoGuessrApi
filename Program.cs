@@ -126,8 +126,8 @@ builder.Services.AddAuthentication(options =>
         options.Cookie.IsEssential = true; // Allow the cookie to be used for authentication even if the user has disabled cookies
     });
 
-builder.Services.AddHostedService<LobbyHostedService>();
-builder.Services.AddHostedService<GameHostedService>();
+//builder.Services.AddHostedService<LobbyHostedService>();
+//builder.Services.AddHostedService<GameHostedService>();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
