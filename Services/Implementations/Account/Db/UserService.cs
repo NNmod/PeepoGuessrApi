@@ -24,7 +24,8 @@ public class UserService : IUserService
     {
         await using var context = await _accountDbContextFactory.CreateDbContextAsync();
         return await context.Users
-            .OrderByDescending(d => d.DivisionId)
+            .OrderByDescending(s => s.Score)
+            .ThenBy(u => u.Id)
             .Include(d => d.Division)
             .Include(r => r.Role)
             .Skip(skip)

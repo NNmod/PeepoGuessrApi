@@ -8,7 +8,6 @@ using PeepoGuessrApi.Entities.Databases.Maintenance;
 using PeepoGuessrApi.Entities.Request.Twitch;
 using PeepoGuessrApi.Entities.Response;
 using PeepoGuessrApi.Services.Interfaces.Account.Db;
-using PeepoGuessrApi.Services.Interfaces.Maintenance;
 using PeepoGuessrApi.Services.Interfaces.Maintenance.Db;
 using PeepoGuessrApi.Services.Interfaces.Twitch;
 using IAuthorizationService = PeepoGuessrApi.Services.Interfaces.Maintenance.Db.IAuthorizationService;
@@ -49,8 +48,9 @@ public class UserController : ControllerBase
         _maintenanceWorkService = maintenanceWorkService;
     }
 
-    [HttpGet("top")]
-    public async Task<IActionResult> GetTop(int page = 0)
+    [AllowAnonymous]
+    [HttpGet("leaderboard")]
+    public async Task<IActionResult> GetLeaderboard(int page = 0)
     {
         var count = await _userService.Count();
         var pages = (int)Math.Ceiling((double)count / 25);

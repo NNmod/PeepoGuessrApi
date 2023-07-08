@@ -107,4 +107,20 @@ public class UserService : IUserService
             return false;
         }
     }
+
+    public async Task<bool> Clear()
+    {
+        await using var context = await _lobbyDbContextFactory.CreateDbContextAsync();
+        await context.Users.ExecuteDeleteAsync();
+        await context.UserInvites.ExecuteDeleteAsync();
+        try
+        {
+            await context.SaveChangesAsync();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

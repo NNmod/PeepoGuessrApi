@@ -37,9 +37,14 @@ public class LobbyHostedService : IHostedService, IDisposable
         _startGameService = startGameService;
     }
     
-    public Task StartAsync(CancellationToken cancellationToken)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Online Hosted Service Startup [{Time}]", DateTime.UtcNow);
+        if (!await _userService.Clear())
+        {
+            _logger.LogError("Cannot startup LobbyHostedService, tables cannot be clear [{Time}]", DateTime.UtcNow);
+            return;
+        }
+        
         _timer = new Timer(async _ =>
         {
             try
@@ -53,7 +58,7 @@ public class LobbyHostedService : IHostedService, IDisposable
             }
         }, null, TimeSpan.Zero, TimeSpan.FromSeconds(3));
 
-        return Task.CompletedTask;
+        _logger.LogInformation("LobbyHostedService successfully startup [{Time}]", DateTime.UtcNow);
     }
 
     private async Task DoWork()
@@ -90,23 +95,6 @@ public class LobbyHostedService : IHostedService, IDisposable
         {
             foreach (var division in await _accountDivisionService.FindAll())
             {
-                /*var users = multiplayer.Users.Where(d => d.DivisionId == division.Id && d.IsRandomAcceptable)
-                    .ToList();
-                for (var i = 0; i < users.Count -1; i += 2)
-                {
-                    var user1 = users[i];
-                    var user2 = users[i + 1];
-                    var code = Guid.NewGuid().ToString();
-                    if (await _startGameService.StartMultiplayerGame(user1, user2, "multiplayer", code))
-                    {
-                        await _lobbyHubContext.Clients.Client(user1.ConnectionId).SendAsync("GameFound", new GameDto(code));
-                        await _lobbyHubContext.Clients.Client(user2.ConnectionId).SendAsync("GameFound", new GameDto(code));
-                        continue;
-                    }
-                    await _lobbyHubContext.Clients.Client(user1.ConnectionId).SendAsync("MatchmakingTrouble");
-                    await _lobbyHubContext.Clients.Client(user2.ConnectionId).SendAsync("MatchmakingTrouble");
-                }*/
-                
                 var inviteUsers = multiplayer.Users.Where(d => d.DivisionId == division.Id && !d.IsGameFounded)
                     .ToList();
                 var ignoreInviteUsers = new List<User>();

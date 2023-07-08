@@ -16,10 +16,11 @@ public class GameHostedService : IHostedService, IDisposable
     private readonly IFinishGameService _finishGameService;
     private readonly IFinishRoundService _finishRoundService;
     private readonly IStartRoundService _startRoundService;
+    private readonly IUserService _userService;
 
     public GameHostedService(ILogger<GameHostedService> logger, IConfiguration configuration, IHubContext<GameHub> gameHubContext,
         IGameTypeService gameTypeService, IFinishGameService finishGameService, IFinishRoundService finishRoundService,
-        IStartRoundService startRoundService)
+        IStartRoundService startRoundService, IUserService userService)
     {
         _semaphore = new SemaphoreSlim(1);
         _logger = logger;
@@ -29,11 +30,17 @@ public class GameHostedService : IHostedService, IDisposable
         _finishGameService = finishGameService;
         _finishRoundService = finishRoundService;
         _startRoundService = startRoundService;
+        _userService = userService;
     }
     
-    public Task StartAsync(CancellationToken cancellationToken)
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Game Hosted Service Startup [{Time}]", DateTime.UtcNow);
+        if (!await _userService.Clear())
+        {
+            _logger.LogError("Cannot startup GameHostedService, table cannot be clear [{Time}]", DateTime.UtcNow);
+            return;
+        }
+        
         _timer = new Timer(async _ =>
         {
             try
@@ -47,7 +54,7 @@ public class GameHostedService : IHostedService, IDisposable
             }
         }, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
         
-        return Task.CompletedTask;
+        _logger.LogInformation("GameHostedService successfully startup [{Time}]", DateTime.UtcNow);
     }
 
     private async Task DoWork()

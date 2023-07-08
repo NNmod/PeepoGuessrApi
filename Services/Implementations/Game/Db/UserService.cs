@@ -88,4 +88,19 @@ public class UserService : IUserService
             return false;
         }
     }
+
+    public async Task<bool> Clear()
+    {
+        await using var context = await _gameDbContextFactory.CreateDbContextAsync();
+        await context.Users.ExecuteDeleteAsync();
+        try
+        {
+            await context.SaveChangesAsync();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }
