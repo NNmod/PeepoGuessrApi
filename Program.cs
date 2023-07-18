@@ -107,8 +107,15 @@ builder.Services.AddControllers().AddNewtonsoftJson(options =>
 );
 builder.Services.AddSignalR();
 
+builder.Host.UseDefaultServiceProvider(
+    (_, options) =>
+    {
+        options.ValidateOnBuild = false;
+        options.ValidateScopes = false;
+    });
+
 builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo("/var/www/ppg/persistKeysStorage"))
+    .PersistKeysToFileSystem(new DirectoryInfo(builder.Configuration.GetConnectionString("PersistKeys")!))
     .SetApplicationName("PeepoGuessrApi");
 builder.Services.AddAuthentication(options =>
     {

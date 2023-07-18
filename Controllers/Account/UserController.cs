@@ -155,6 +155,8 @@ public class UserController : ControllerBase
         var user = await _userService.FindByTwitch(userDto.Id);
         if (user == null)
         {
+            if (_configuration["Twitch:ClientRegistration"] != "Enable")
+                return StatusCode(403, new ErrorDto<object?>(403, nameof(SignInProcessing), new { code, error, state }));
             user = new User
             {
                 DivisionId = 1,
@@ -185,7 +187,7 @@ public class UserController : ControllerBase
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, 
             new ClaimsPrincipal(new ClaimsIdentity(claims, "ApplicationCookie", 
                 ClaimsIdentity.DefaultNameClaimType, ClaimsIdentity.DefaultRoleClaimType)));
-        return Redirect("https://ppg.nnmod.com/close.html");
+        return Redirect(_configuration["Twitch:ClientClose"]!);
     }
 
     [HttpGet("sign-out")]
