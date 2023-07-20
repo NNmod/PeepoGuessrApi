@@ -23,8 +23,11 @@ public class AccountDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Map>().HasData(
-            new Map { Id = 1, Name = "PPL6MP1", Url = "ppl6n1", IsClassic = true },
-            new Map { Id = 2, Name = "PPL6MP2", Url = "ppl6n2", IsClassic = true });
+            new Map { Id = 1, Name = "PPL6MP1", Url = "ppl6n1", IsClassic = false },
+            new Map { Id = 2, Name = "PPL6MP2", Url = "ppl6n2", IsClassic = false },
+            new Map { Id = 3, Name = "PPL5MP", Url = "ppl5n", IsClassic = false },
+            new Map { Id = 4, Name = "PPL7MP1", Url = "ppl7n1", IsClassic = true },
+            new Map { Id = 5, Name = "PPL7MP2", Url = "ppl7n2", IsClassic = true });
         modelBuilder.Entity<GameType>().HasData(
             new GameType { Id = 1, Name = "Singleplayer" },
             new GameType { Id = 2, Name = "Multiplayer" },

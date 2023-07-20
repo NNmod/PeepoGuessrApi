@@ -33,8 +33,8 @@ public class StartRoundService : IStartRoundService
     {
         var maps = await _accountMapService.FindClassic();
         var rnd = new Random();
-        var mapId = rnd.Next(1, maps.Count + 1);
-        var map = maps.FirstOrDefault(m => m.Id == mapId);
+        var mapId = rnd.Next(0, maps.Count);
+        var map = maps[mapId];
         var position = await _mapService.RandomPosition(mapCdnUrl, map!.Url) ?? new Point
         {
             X = rnd.Next(1000),
